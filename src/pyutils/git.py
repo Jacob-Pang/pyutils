@@ -71,6 +71,10 @@ def push_directory(access_token: str, repo_name: str, from_local_dpath: str = os
     push_files(access_token, repo_name, from_local_fpaths, to_remote_dpaths,
             to_branch, commit_msg)
 
+def web_remote_fpath(username: str, repo_name: str, remote_fpath: str,
+    branch: str = "main") -> str:
+    return f"https://raw.githubusercontent.com/{username}/{repo_name}/{branch}/{remote_fpath}"
+
 def read_remote_file(username: str, repo_name: str, from_remote_fpath: str,
     from_branch: str = "main") -> any:
     """ Reads the content from file in remote Github repository branch.
@@ -84,10 +88,10 @@ def read_remote_file(username: str, repo_name: str, from_remote_fpath: str,
     Returns:
         fcontent (any): The contents of the remote file.
     """
-    absolute_remote_fpath = "https://raw.githubusercontent.com" \
-            + f"/{username}/{repo_name}/{from_branch}/{from_remote_fpath}"
-
-    page = requests.get(absolute_remote_fpath)
+    page = requests.get(
+        web_remote_fpath(username, repo_name, from_remote_fpath, from_branch)
+    )
+    
     return page.content
 
 def pull_directory(username: str, repo_name: str, from_remote_dpath: str = "",
