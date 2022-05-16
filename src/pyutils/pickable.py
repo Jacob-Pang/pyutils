@@ -33,7 +33,7 @@ class PickableObject (object):
         return restored_object
 
     def __init__(self, **kwargs) -> None:
-        for kw, arg in kwargs:
+        for kw, arg in kwargs.items():
             setattr(self, kw, arg)
 
     def __getstate__(self) -> dict:
