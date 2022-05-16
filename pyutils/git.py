@@ -1,0 +1,135 @@
+import os
+import requests
+
+from github import Github
+from github import InputGitTreeElement
+from collections.abc import Iterable
+
+def push_files(access_token: str, repo_name: str, from_local_fpaths: Iterable,
+    to_remote_dpaths: Iterable = "", to_branch: str = "main",
+    commit_msg: str = "") -> None:
+    """ Commit and pushed files from local to remote Github repository branch.
+
+    Parameters:
+        access_token (str): Admin access token to Github account for
+                authentication purposes.
+        repo_name (str): The remote repository name.
+        from_local_fpaths (Iterable): The local file paths of the files to be
+                committed and pushed.
+        to_remote_dpaths (Iterable, str): The relative directory paths within
+                the remote repository to push for each file respectively.
+                If a single repository directory is given as a string,
+                all files will be pushed to this directory. An empty
+                directory path maps to the repository parent directory.
+        to_branch (str): The branch name to push to.
+        commit_msg (str): The commit message to use.
+    """
+    if isinstance(to_remote_dpaths, str):
+        to_remote_dpaths = [ to_remote_dpaths for _ in from_local_fpaths ]
+
+    git_client = Github(access_token)
+    repo = git_client.get_user().get_repo(repo_name)
+
+    branch_ref = repo.get_git_ref(f"heads/{to_branch}")
+    base_tree = repo.get_git_tree(branch_ref.object.sha)
+
+    input_tree_elements = []
+
+    for local_fpath, remote_dpath in zip(from_local_fpaths, to_remote_dpaths):
+        with open(local_fpath) as inputs:
+            data = inputs.read()
+
+        _, fname = os.path.split(local_fpath)
+        remote_fpath = f"{remote_dpath}/{fname}" if remote_dpath else fname
+
+        input_tree_elements.append(
+            InputGitTreeElement(remote_fpath, "100644", "blob", data)
+        )
+
+    tree = repo.create_git_tree(input_tree_elements, base_tree)
+    parent = repo.get_git_commit(branch_ref.object.sha)
+    commit = repo.create_git_commit(commit_msg, tree, [parent])
+
+    branch_ref.edit(commit.sha)
+
+def push_directory(access_token: str, repo_name: str, from_local_dpath: str = os.getcwd(),
+    to_remote_dpath: str = "", to_branch: str = "main", commit_msg: str = "") -> None:
+    """
+    """
+    from_local_fpaths = []
+    to_remote_dpaths = []
+
+    for root, _, fnames in os.walk(from_local_dpath):
+        for fname in fnames:
+            from_local_fpaths.append(os.path.join(root, fname))
+            to_remote_dpaths.append(
+                root.replace(from_local_dpath + os.sep, '')
+                    .replace(from_local_dpath, '')
+                    .replace(os.sep, '/')
+            )
+
+    push_files(access_token, repo_name, from_local_fpaths, to_remote_dpaths,
+            to_branch, commit_msg)
+
+def read_remote_file(username: str, repo_name: str, from_remote_fpath: str,
+    from_branch: str = "main") -> any:
+    """ Reads the content from file in remote Github repository branch.
+
+    Parameters:
+        username (str): The Github user.
+        repo_name (str): The Remote repository name.
+        from_remote_fpath (str): The relative filepath within the remote repository.
+        from_branch (str): The branch of the repository to pull from.
+
+    Returns:
+        fcontent (any): The contents of the remote file.
+    """
+    absolute_remote_fpath = "https://raw.githubusercontent.com" \
+            + f"/{username}/{repo_name}/{from_branch}/{from_remote_fpath}"
+
+    page = requests.get(absolute_remote_fpath)
+    return page.content
+
+def pull_directory(username: str, repo_name: str, from_remote_dpath: str = "",
+    to_local_dpath: str = os.getcwd(), from_branch: str = "main") -> None:
+    """ Pulls the contents of a remote Github repository directory.
+
+    Parameters:
+        username (str): The Github user.
+        repo_name (str): The Remote repository name.
+        from_remote_dpath (str): The relative directory path within the remote
+                repository.
+        to_local_dpath (str): The local directory to write the contents into.
+        from_branch (str): The branch of the repository to pull from.
+    """
+    client = Github()
+    repo = client.get_repo(f"{username}/{repo_name}")
+
+    base_remote_dpath = from_remote_dpath
+    base_local_dpath = to_local_dpath
+
+    def pull_directory_walk(from_remote_dpath: str, to_local_dpath: str):
+        if not os.path.exists(to_local_dpath):
+            os.makedirs(to_local_dpath)
+
+        for element in repo.get_contents(from_remote_dpath, ref=from_branch):
+            relative_local_path = element.path.replace(base_remote_dpath, base_local_dpath) \
+                    if base_remote_dpath else \
+                    os.path.join(base_local_dpath, element.path)
+            
+            relative_local_path = relative_local_path.replace('/', os.sep)
+
+            if element.type == "dir":
+                pull_directory_walk(element.path, relative_local_path)
+                continue
+            
+            fcontent = read_remote_file(username, repo_name, element.path,
+                    from_branch)
+
+            with open(relative_local_path, 'wb') as fout:
+                fout.write(fcontent)
+
+    pull_directory_walk(from_remote_dpath, to_local_dpath)
+
+if __name__ == "__main__":
+    pass
