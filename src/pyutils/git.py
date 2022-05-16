@@ -71,16 +71,16 @@ def push_directory(access_token: str, repo_name: str, from_local_dpath: str = os
     push_files(access_token, repo_name, from_local_fpaths, to_remote_dpaths,
             to_branch, commit_msg)
 
-def web_remote_fpath(username: str, repo_name: str, remote_fpath: str,
+def web_remote_fpath(user_name: str, repo_name: str, remote_fpath: str,
     branch: str = "main") -> str:
-    return f"https://raw.githubusercontent.com/{username}/{repo_name}/{branch}/{remote_fpath}"
+    return f"https://raw.githubusercontent.com/{user_name}/{repo_name}/{branch}/{remote_fpath}"
 
-def read_remote_file(username: str, repo_name: str, from_remote_fpath: str,
+def read_remote_file(user_name: str, repo_name: str, from_remote_fpath: str,
     from_branch: str = "main") -> any:
     """ Reads the content from file in remote Github repository branch.
 
     Parameters:
-        username (str): The Github user.
+        user_name (str): The Github user.
         repo_name (str): The Remote repository name.
         from_remote_fpath (str): The relative filepath within the remote repository.
         from_branch (str): The branch of the repository to pull from.
@@ -89,17 +89,17 @@ def read_remote_file(username: str, repo_name: str, from_remote_fpath: str,
         fcontent (any): The contents of the remote file.
     """
     page = requests.get(
-        web_remote_fpath(username, repo_name, from_remote_fpath, from_branch)
+        web_remote_fpath(user_name, repo_name, from_remote_fpath, from_branch)
     )
     
     return page.content
 
-def pull_directory(username: str, repo_name: str, from_remote_dpath: str = "",
+def pull_directory(user_name: str, repo_name: str, from_remote_dpath: str = "",
     to_local_dpath: str = os.getcwd(), from_branch: str = "main") -> None:
     """ Pulls the contents of a remote Github repository directory.
 
     Parameters:
-        username (str): The Github user.
+        user_name (str): The Github user.
         repo_name (str): The Remote repository name.
         from_remote_dpath (str): The relative directory path within the remote
                 repository.
@@ -107,7 +107,7 @@ def pull_directory(username: str, repo_name: str, from_remote_dpath: str = "",
         from_branch (str): The branch of the repository to pull from.
     """
     client = Github()
-    repo = client.get_repo(f"{username}/{repo_name}")
+    repo = client.get_repo(f"{user_name}/{repo_name}")
 
     base_remote_dpath = from_remote_dpath
     base_local_dpath = to_local_dpath
@@ -127,7 +127,7 @@ def pull_directory(username: str, repo_name: str, from_remote_dpath: str = "",
                 pull_directory_walk(element.path, relative_local_path)
                 continue
             
-            fcontent = read_remote_file(username, repo_name, element.path,
+            fcontent = read_remote_file(user_name, repo_name, element.path,
                     from_branch)
 
             with open(relative_local_path, 'wb') as fout:
