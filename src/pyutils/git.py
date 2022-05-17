@@ -36,8 +36,11 @@ def push_files(access_token: str, repo_name: str, from_local_fpaths: Iterable,
     input_tree_elements = []
 
     for local_fpath, remote_dpath in zip(from_local_fpaths, to_remote_dpaths):
-        with open(local_fpath, encoding="utf-8") as inputs:
-            data = inputs.read()
+        try:
+            with open(local_fpath) as inputs:
+                data = inputs.read()
+        except:
+            print(local_fpath)
 
         _, fname = os.path.split(local_fpath)
         remote_fpath = f"{remote_dpath}/{fname}" if remote_dpath else fname
