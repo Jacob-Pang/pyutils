@@ -36,7 +36,7 @@ def push_files(access_token: str, repo_name: str, from_local_fpaths: Iterable,
     input_tree_elements = []
 
     for local_fpath, remote_dpath in zip(from_local_fpaths, to_remote_dpaths):
-        with open(local_fpath) as inputs:
+        with open(local_fpath, encoding="utf-8") as inputs:
             data = inputs.read()
 
         _, fname = os.path.split(local_fpath)
