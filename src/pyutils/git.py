@@ -39,8 +39,9 @@ def push_files(access_token: str, repo_name: str, from_local_fpaths: Iterable,
         try:
             with open(local_fpath) as inputs:
                 data = inputs.read()
-        except:
-            print(local_fpath)
+        except: # Read as binary
+            with open(local_fpath, "rb") as inputs:
+                data = inputs.read()
 
         _, fname = os.path.split(local_fpath)
         remote_fpath = f"{remote_dpath}/{fname}" if remote_dpath else fname
