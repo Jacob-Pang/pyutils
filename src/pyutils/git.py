@@ -54,13 +54,15 @@ def push_directory(access_token: str, repo_name: str, from_local_dpath: str = os
     """
     from_local_fpaths = []
     to_remote_dpaths = []
+    append_remote_dpath = f"{to_remote_dpath}/" if to_remote_dpath else ""
 
     for root, _, fnames in os.walk(from_local_dpath):
         for fname in fnames:
             from_local_fpaths.append(os.path.join(root, fname))
             to_remote_dpaths.append(
-                root.replace(from_local_dpath + os.sep, to_remote_dpath)
-                    .replace(from_local_dpath, to_remote_dpath)
+                append_remote_dpath +
+                root.replace(from_local_dpath + os.sep, '')
+                    .replace(from_local_dpath, '')
                     .replace(os.sep, '/')
             )
 
