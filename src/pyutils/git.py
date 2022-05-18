@@ -30,31 +30,23 @@ def push_files(access_token: str, repo_name: str, from_local_fpaths: Iterable,
     git_client = Github(access_token)
     repo = git_client.get_user().get_repo(repo_name)
 
-    branch_ref = repo.get_git_ref(f"heads/{to_branch}")
-    base_tree = repo.get_git_tree(branch_ref.object.sha)
-
-    input_tree_elements = []
-
     for local_fpath, remote_dpath in zip(from_local_fpaths, to_remote_dpaths):
         try:
             with open(local_fpath) as inputs:
-                data = inputs.read()
+                contents = inputs.read()
         except: # Read as binary
             with open(local_fpath, "rb") as inputs:
-                data = inputs.read()
+                contents = inputs.read()
 
         _, fname = os.path.split(local_fpath)
         remote_fpath = f"{remote_dpath}/{fname}" if remote_dpath else fname
 
-        input_tree_elements.append(
-            InputGitTreeElement(remote_fpath, "100644", "blob", data)
-        )
-
-    tree = repo.create_git_tree(input_tree_elements, base_tree)
-    parent = repo.get_git_commit(branch_ref.object.sha)
-    commit = repo.create_git_commit(commit_msg, tree, [parent])
-
-    branch_ref.edit(commit.sha)
+        try:
+            previous_contents = repo.get_contents(remote_fpath, ref=to_branch)
+            repo.update_file(remote_fpath, commit_msg, contents,
+                    previous_contents.sha, to_branch)
+        except:
+            repo.create_file(remote_fpath, commit_msg, contents, to_branch)
 
 def push_directory(access_token: str, repo_name: str, from_local_dpath: str = os.getcwd(),
     to_remote_dpath: str = "", to_branch: str = "main", commit_msg: str = "") -> None:
