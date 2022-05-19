@@ -2,7 +2,6 @@ import os
 import requests
 
 from github import Github
-from github import InputGitTreeElement
 from collections.abc import Iterable
 
 def push_files(access_token: str, repo_name: str, from_local_fpaths: Iterable,
@@ -50,20 +49,35 @@ def push_files(access_token: str, repo_name: str, from_local_fpaths: Iterable,
 
 def push_directory(access_token: str, repo_name: str, from_local_dpath: str = os.getcwd(),
     to_remote_dpath: str = "", to_branch: str = "main", commit_msg: str = "") -> None:
-    """
+    """ Commit and push directory from local to remote Github repository, preserving
+    directory tree structure.
+
+    Parameters:
+        access_token (str): Admin access token to Github account for
+                authentication purposes.
+        repo_name (str): The remote repository name.
+        from_local_dpath (str): The local directory path to be committed and pushed.
+        to_remote_dpath (str): The relative directory path within the remote
+                repository to push the local directory to.
+        to_branch (str): The branch name to push to.
+        commit_msg (str): The commit message to use.
     """
     from_local_fpaths = []
     to_remote_dpaths = []
-    append_remote_dpath = f"{to_remote_dpath}/" if to_remote_dpath else ""
 
     for root, _, fnames in os.walk(from_local_dpath):
-        for fname in fnames:
+        for fname in fnames:     
             from_local_fpaths.append(os.path.join(root, fname))
-            to_remote_dpaths.append(
-                append_remote_dpath +
-                root.replace(from_local_dpath + os.sep, '')
-                    .replace(from_local_dpath, '')
+            relative_local_dpath = root.replace(from_local_dpath + os.sep, '') \
+                    .replace(from_local_dpath, '') \
                     .replace(os.sep, '/')
+
+            to_remote_dpaths.append(
+                '/'.join([
+                    path_component for path_component in
+                    [to_remote_dpath, relative_local_dpath]
+                    if path_component
+                ])
             )
 
     push_files(access_token, repo_name, from_local_fpaths, to_remote_dpaths,
