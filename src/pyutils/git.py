@@ -40,12 +40,13 @@ def push_files(access_token: str, repo_name: str, from_local_fpaths: Iterable,
         _, fname = os.path.split(local_fpath)
         remote_fpath = f"{remote_dpath}/{fname}" if remote_dpath else fname
 
-        try:
+        try: # Remove existing files
             previous_contents = repo.get_contents(remote_fpath, ref=to_branch)
-            repo.update_file(remote_fpath, commit_msg, contents,
-                    previous_contents.sha, to_branch)
+            repo.delete_file(remote_fpath, commit_msg, previous_contents.sha, to_branch)
         except:
-            repo.create_file(remote_fpath, commit_msg, contents, to_branch)
+            pass
+
+        repo.create_file(remote_fpath, commit_msg, contents, to_branch)
 
 def push_directory(access_token: str, repo_name: str, from_local_dpath: str = os.getcwd(),
     to_remote_dpath: str = "", to_branch: str = "main", commit_msg: str = "") -> None:
