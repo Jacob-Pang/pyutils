@@ -1,4 +1,5 @@
 import os
+import time
 import requests
 
 from github import Github
@@ -6,8 +7,8 @@ from github import InputGitTreeElement
 from collections.abc import Iterable
 
 def push_files(access_token: str, repo_name: str, from_local_fpaths: Iterable,
-    to_remote_dpaths: Iterable = "", to_branch: str = "main",
-    commit_msg: str = "") -> None:
+    to_remote_dpaths: Iterable = "", to_branch: str = "main", commit_msg: str = "",
+    file_encodings: Iterable = "utf-8") -> None:
     """ Commit and pushed files from local to remote Github repository branch.
 
     Parameters:
@@ -23,9 +24,15 @@ def push_files(access_token: str, repo_name: str, from_local_fpaths: Iterable,
                 directory path maps to the repository parent directory.
         to_branch (str): The branch name to push to.
         commit_msg (str): The commit message to use.
+        file_encodings (Iterable, str): The encoding to use for reading the
+                file contents. If a single encoding is given as a string,
+                all files will be decoded using this encoding format.
     """
     if isinstance(to_remote_dpaths, str):
         to_remote_dpaths = [ to_remote_dpaths for _ in from_local_fpaths ]
+
+    if isinstance(file_encodings, str):
+        file_encodings = [ file_encodings for _ in from_local_fpaths ]
 
     git_client = Github(access_token)
     repo = git_client.get_user().get_repo(repo_name)
@@ -34,12 +41,14 @@ def push_files(access_token: str, repo_name: str, from_local_fpaths: Iterable,
     branch_tree = repo.get_git_tree(branch_ref.object.sha)
     tree_elements = []
 
-    for local_fpath, remote_dpath in zip(from_local_fpaths, to_remote_dpaths):
+    for local_fpath, remote_dpath, encoding in zip(from_local_fpaths,
+            to_remote_dpaths, file_encodings):
+        
         _, fname = os.path.split(local_fpath)
         remote_fpath = f"{remote_dpath}/{fname}" if remote_dpath else fname
 
         try: # Does not support png extension
-            with open(local_fpath) as inputs:
+            with open(local_fpath, encoding=encoding) as inputs:
                 contents = inputs.read()
 
             tree_elements.append(InputGitTreeElement(remote_fpath, "100644",
@@ -47,7 +56,7 @@ def push_files(access_token: str, repo_name: str, from_local_fpaths: Iterable,
             continue
         except: pass
 
-        print(fname)
+        # Decoding or compatibility errors
         try: # Remove existing
             previous_contents = repo.get_contents(remote_fpath, ref=to_branch)
             repo.delete_file(remote_fpath, commit_msg, previous_contents.sha, to_branch)
@@ -55,9 +64,9 @@ def push_files(access_token: str, repo_name: str, from_local_fpaths: Iterable,
 
         with open(local_fpath, "rb") as inputs:
             contents = inputs.read()
-
-        print("...")
+        
         repo.create_file(remote_fpath, commit_msg, contents, to_branch)
+        time.sleep(.1) # Prevent connection rejection from request abuse
 
     if tree_elements:
         tree = repo.create_git_tree(tree_elements, branch_tree)
