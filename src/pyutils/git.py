@@ -1,4 +1,5 @@
 import os
+from re import L
 import requests
 
 from github import Github
@@ -29,6 +30,16 @@ def push_files(access_token: str, repo_name: str, from_local_fpaths: Iterable,
         timeout (int): The number of seconds to wait before terminating
                 https connection requests.
     """
+    def get_local_contents(local_fpath: str, encoding: str) -> any:
+        try: 
+            with open(local_fpath, encoding=encoding) as inputs:
+                contents = inputs.read()
+        except: # Fallback on binary read mode
+            with open(local_fpath, "rb") as inputs:
+                contents = inputs.read()
+
+        return contents
+
     if isinstance(to_remote_dpaths, str):
         to_remote_dpaths = [ to_remote_dpaths for _ in from_local_fpaths ]
 
@@ -40,7 +51,7 @@ def push_files(access_token: str, repo_name: str, from_local_fpaths: Iterable,
 
     branch_ref = repo.get_git_ref(f"heads/{to_branch}")
     branch_tree = repo.get_git_tree(branch_ref.object.sha)
-    tree_elements = []
+    tree_elements, error_packets = [], []
 
     for local_fpath, remote_dpath, encoding in zip(from_local_fpaths,
             to_remote_dpaths, file_encodings):
@@ -48,32 +59,27 @@ def push_files(access_token: str, repo_name: str, from_local_fpaths: Iterable,
         _, fname = os.path.split(local_fpath)
         remote_fpath = f"{remote_dpath}/{fname}" if remote_dpath else fname
 
-        try: 
-            with open(local_fpath, encoding=encoding) as inputs:
-                contents = inputs.read()
-        except: # Fallback on binary read mode
-            with open(local_fpath, "rb") as inputs:
-                contents = inputs.read()
-
         try:
             tree_elements.append(InputGitTreeElement(remote_fpath, "100644",
-                    "blob", contents))
-            continue
-        except: pass
-        
-        # Decoding or compatibility errors
-        try: # Remove existing
-            previous_contents = repo.get_contents(remote_fpath, ref=to_branch)
-            repo.delete_file(remote_fpath, commit_msg, previous_contents.sha, to_branch)
-        except: pass
-
-        repo.create_file(remote_fpath, commit_msg, contents, to_branch)
+                    "blob", get_local_contents(local_fpath, encoding)))
+        except:
+            error_packets.append((local_fpath, remote_fpath, encoding))
     
     if tree_elements:
         tree = repo.create_git_tree(tree_elements, branch_tree)
         parent = repo.get_git_commit(branch_ref.object.sha)
         commit = repo.create_git_commit(commit_msg, tree, [parent])
         branch_ref.edit(commit.sha)
+
+    for local_fpath, remote_fpath, encoding in error_packets:
+        # Decoding or compatibility errors
+        try: # Remove existing
+            repo.delete_file(remote_fpath, commit_msg, repo.get_contents(remote_fpath,
+                    ref=to_branch).sha, to_branch)
+        except: pass
+
+        repo.create_file(remote_fpath, commit_msg,get_local_contents(local_fpath,
+                encoding), to_branch)
 
 def push_directory(access_token: str, repo_name: str, from_local_dpath: str = os.getcwd(),
     to_remote_dpath: str = "", to_branch: str = "main", commit_msg: str = "",
