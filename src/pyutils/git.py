@@ -47,11 +47,13 @@ def push_files(access_token: str, repo_name: str, from_local_fpaths: Iterable,
             continue
         except: pass
 
+        print(fname)
         try: # Remove existing
             previous_contents = repo.get_contents(remote_fpath, ref=to_branch)
             repo.delete_file(remote_fpath, commit_msg, previous_contents.sha, to_branch)
         except: pass
 
+        print("...")
         repo.create_file(remote_fpath, commit_msg, contents, to_branch)
 
     if tree_elements:
