@@ -2,6 +2,7 @@ import os
 import requests
 
 from github import Github
+from github import InputGitTreeElement
 from collections.abc import Iterable
 
 def push_files(access_token: str, repo_name: str, from_local_fpaths: Iterable,
@@ -29,24 +30,35 @@ def push_files(access_token: str, repo_name: str, from_local_fpaths: Iterable,
     git_client = Github(access_token)
     repo = git_client.get_user().get_repo(repo_name)
 
-    for local_fpath, remote_dpath in zip(from_local_fpaths, to_remote_dpaths):
-        try:
-            with open(local_fpath) as inputs:
-                contents = inputs.read()
-        except: # Read as binary
-            with open(local_fpath, "rb") as inputs:
-                contents = inputs.read()
+    branch_ref = repo.get_git_ref(f"heads/{to_branch}")
+    branch_tree = repo.get_git_tree(branch_ref.object.sha)
+    tree_elements = []
 
+    for local_fpath, remote_dpath in zip(from_local_fpaths, to_remote_dpaths):
         _, fname = os.path.split(local_fpath)
         remote_fpath = f"{remote_dpath}/{fname}" if remote_dpath else fname
 
-        try: # Remove existing files
+        with open(local_fpath, "rb") as inputs:
+            contents = inputs.read()
+
+        try: # Does not support png extension
+            tree_elements.append(InputGitTreeElement(remote_dpath, "100644",
+                    "blob", contents))
+            continue
+        except: pass
+
+        try: # Remove existing
             previous_contents = repo.get_contents(remote_fpath, ref=to_branch)
             repo.delete_file(remote_fpath, commit_msg, previous_contents.sha, to_branch)
-        except:
-            pass
+        except: pass
 
         repo.create_file(remote_fpath, commit_msg, contents, to_branch)
+
+    if tree_elements:
+        tree = repo.create_git_tree(tree_elements, branch_tree)
+        parent = repo.get_git_commit(branch_ref.object.sha)
+        commit = repo.create_git_commit(commit_msg, tree, [parent])
+        branch_ref.edit(commit.sha)
 
 def push_directory(access_token: str, repo_name: str, from_local_dpath: str = os.getcwd(),
     to_remote_dpath: str = "", to_branch: str = "main", commit_msg: str = "") -> None:
