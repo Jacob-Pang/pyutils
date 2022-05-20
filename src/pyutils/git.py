@@ -38,21 +38,23 @@ def push_files(access_token: str, repo_name: str, from_local_fpaths: Iterable,
         _, fname = os.path.split(local_fpath)
         remote_fpath = f"{remote_dpath}/{fname}" if remote_dpath else fname
 
-        with open(local_fpath, "rb") as inputs:
-            contents = inputs.read()
-
         try: # Does not support png extension
+            with open(local_fpath) as inputs:
+                contents = inputs.read()
+
             tree_elements.append(InputGitTreeElement(remote_fpath, "100644",
                     "blob", contents))
             continue
-        except Exception as e:
-            print(e)
+        except: pass
 
         print(fname)
         try: # Remove existing
             previous_contents = repo.get_contents(remote_fpath, ref=to_branch)
             repo.delete_file(remote_fpath, commit_msg, previous_contents.sha, to_branch)
         except: pass
+
+        with open(local_fpath, "rb") as inputs:
+            contents = inputs.read()
 
         print("...")
         repo.create_file(remote_fpath, commit_msg, contents, to_branch)
