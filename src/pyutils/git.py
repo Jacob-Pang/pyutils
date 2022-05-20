@@ -42,10 +42,11 @@ def push_files(access_token: str, repo_name: str, from_local_fpaths: Iterable,
             contents = inputs.read()
 
         try: # Does not support png extension
-            tree_elements.append(InputGitTreeElement(remote_dpath, "100644",
+            tree_elements.append(InputGitTreeElement(remote_fpath, "100644",
                     "blob", contents))
             continue
-        except: pass
+        except Exception as e:
+            print(e)
 
         print(fname)
         try: # Remove existing
