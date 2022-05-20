@@ -1,5 +1,4 @@
 import os
-import time
 import requests
 
 from github import Github
@@ -8,7 +7,7 @@ from collections.abc import Iterable
 
 def push_files(access_token: str, repo_name: str, from_local_fpaths: Iterable,
     to_remote_dpaths: Iterable = "", to_branch: str = "main", commit_msg: str = "",
-    file_encodings: Iterable = "utf-8") -> None:
+    file_encodings: Iterable = "utf-8", timeout: int = 15) -> None:
     """ Commit and pushed files from local to remote Github repository branch.
 
     Parameters:
@@ -27,6 +26,8 @@ def push_files(access_token: str, repo_name: str, from_local_fpaths: Iterable,
         file_encodings (Iterable, str): The encoding to use for reading the
                 file contents. If a single encoding is given as a string,
                 all files will be decoded using this encoding format.
+        timeout (int): The number of seconds to wait before terminating
+                https connection requests.
     """
     if isinstance(to_remote_dpaths, str):
         to_remote_dpaths = [ to_remote_dpaths for _ in from_local_fpaths ]
@@ -34,7 +35,7 @@ def push_files(access_token: str, repo_name: str, from_local_fpaths: Iterable,
     if isinstance(file_encodings, str):
         file_encodings = [ file_encodings for _ in from_local_fpaths ]
 
-    git_client = Github(access_token)
+    git_client = Github(access_token, timeout=timeout, retry=5)
     repo = git_client.get_user().get_repo(repo_name)
 
     branch_ref = repo.get_git_ref(f"heads/{to_branch}")
@@ -47,27 +48,27 @@ def push_files(access_token: str, repo_name: str, from_local_fpaths: Iterable,
         _, fname = os.path.split(local_fpath)
         remote_fpath = f"{remote_dpath}/{fname}" if remote_dpath else fname
 
-        try: # Does not support png extension
+        try: 
             with open(local_fpath, encoding=encoding) as inputs:
                 contents = inputs.read()
+        except: # Fallback on binary read mode
+            with open(local_fpath, "rb") as inputs:
+                contents = inputs.read()
 
+        try:
             tree_elements.append(InputGitTreeElement(remote_fpath, "100644",
                     "blob", contents))
             continue
         except: pass
-
+        
         # Decoding or compatibility errors
         try: # Remove existing
             previous_contents = repo.get_contents(remote_fpath, ref=to_branch)
             repo.delete_file(remote_fpath, commit_msg, previous_contents.sha, to_branch)
         except: pass
 
-        with open(local_fpath, "rb") as inputs:
-            contents = inputs.read()
-        
         repo.create_file(remote_fpath, commit_msg, contents, to_branch)
-        time.sleep(.1) # Prevent connection rejection from request abuse
-
+    
     if tree_elements:
         tree = repo.create_git_tree(tree_elements, branch_tree)
         parent = repo.get_git_commit(branch_ref.object.sha)
@@ -75,7 +76,8 @@ def push_files(access_token: str, repo_name: str, from_local_fpaths: Iterable,
         branch_ref.edit(commit.sha)
 
 def push_directory(access_token: str, repo_name: str, from_local_dpath: str = os.getcwd(),
-    to_remote_dpath: str = "", to_branch: str = "main", commit_msg: str = "") -> None:
+    to_remote_dpath: str = "", to_branch: str = "main", commit_msg: str = "",
+    timeout: int = 15) -> None:
     """ Commit and push directory from local to remote Github repository, preserving
     directory tree structure.
 
@@ -88,6 +90,8 @@ def push_directory(access_token: str, repo_name: str, from_local_dpath: str = os
                 repository to push the local directory to.
         to_branch (str): The branch name to push to.
         commit_msg (str): The commit message to use.
+        timeout (int): The number of seconds to wait before terminating
+                https connection requests.
     """
     from_local_fpaths = []
     to_remote_dpaths = []
@@ -108,7 +112,7 @@ def push_directory(access_token: str, repo_name: str, from_local_dpath: str = os
             )
 
     push_files(access_token, repo_name, from_local_fpaths, to_remote_dpaths,
-            to_branch, commit_msg)
+            to_branch, commit_msg, timeout=timeout)
 
 def web_remote_fpath(user_name: str, repo_name: str, remote_fpath: str,
     branch: str = "main") -> str:
