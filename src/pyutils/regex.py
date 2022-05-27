@@ -4,6 +4,7 @@ def disjoint_regex(*regex) -> str:
 def disjoint_token_regex(*tokens: str) -> str:
     return r"(?:" + disjoint_regex(*tokens) + ')'
 
+# PATTERNS
 DAYS = disjoint_token_regex(
     "Monday" , "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday",
     "monday" , "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday",
@@ -22,24 +23,24 @@ TIME = r"\d{1,2}(:\d+)+\s*(?:a.m.|p.m.|am|pm)*"
 
 SINGLE_CHAR_ONLY = r"^(.)\1*$"
 
-def dday_dmonth_dyear(delimiter: str = r"\/") -> str:
+def n_day_n_month_n_year(delimiter: str) -> str:
     return r"\d{1,2}(\s*" + delimiter + r"\s*\d{1,4}){2}"
 
-def dday_smonth_dyear(delimiter: str = r"\/") -> str:
+def n_day_s_month_n_year(delimiter: str) -> str:
     return r"\d{1,2}\s*" + delimiter + r"\s*" + MONTHS + r"\s*(" + \
         delimiter + r"\s*\d{2,4}){0,1}"
 
-def smonth_dday_dyear() -> str:
+def s_month_n_day_n_year() -> str:
     return MONTHS + r"\s*\d{1,2}(,\s*\d{2,4}){0,1}"
 
 def date_regex() -> str:
     return disjoint_regex(
-        dday_dmonth_dyear(r"\/"),
-        dday_dmonth_dyear(r"\-"),
-        dday_smonth_dyear(r"\/"),
-        dday_smonth_dyear(r"\-"),
-        dday_smonth_dyear(r" "),
-        smonth_dday_dyear()
+        n_day_n_month_n_year(r"\/"),
+        n_day_n_month_n_year(r"\-"),
+        n_day_s_month_n_year(r"\/"),
+        n_day_s_month_n_year(r"\-"),
+        n_day_s_month_n_year(r" "),
+        s_month_n_day_n_year()
     )
 
 if __name__ == "__main__":
