@@ -1,6 +1,7 @@
+import io
 import os
-from re import L
 import requests
+import pandas as pd
 
 from github import Github
 from github import InputGitTreeElement
@@ -120,29 +121,6 @@ def push_directory(access_token: str, repo_name: str, from_local_dpath: str = os
     push_files(access_token, repo_name, from_local_fpaths, to_remote_dpaths,
             to_branch, commit_msg, timeout=timeout)
 
-def web_remote_fpath(user_name: str, repo_name: str, remote_fpath: str,
-    branch: str = "main") -> str:
-    return f"https://raw.githubusercontent.com/{user_name}/{repo_name}/{branch}/{remote_fpath}"
-
-def read_remote_file(user_name: str, repo_name: str, from_remote_fpath: str,
-    from_branch: str = "main") -> any:
-    """ Reads the content from file in remote Github repository branch.
-
-    Parameters:
-        user_name (str): The Github user.
-        repo_name (str): The Remote repository name.
-        from_remote_fpath (str): The relative filepath within the remote repository.
-        from_branch (str): The branch of the repository to pull from.
-
-    Returns:
-        fcontent (any): The contents of the remote file.
-    """
-    page = requests.get(
-        web_remote_fpath(user_name, repo_name, from_remote_fpath, from_branch)
-    )
-    
-    return page.content
-
 def pull_directory(user_name: str, repo_name: str, from_remote_dpath: str = "",
     to_local_dpath: str = os.getcwd(), from_branch: str = "main") -> None:
     """ Pulls the contents of a remote Github repository directory.
@@ -183,6 +161,36 @@ def pull_directory(user_name: str, repo_name: str, from_remote_dpath: str = "",
                 fout.write(fcontent)
 
     pull_directory_walk(from_remote_dpath, to_local_dpath)
+
+# READ OPERATIONS
+def web_remote_fpath(user_name: str, repo_name: str, remote_fpath: str,
+    branch: str = "main") -> str:
+    return f"https://raw.githubusercontent.com/{user_name}/{repo_name}/{branch}/{remote_fpath}"
+
+def read_remote_file(user_name: str, repo_name: str, from_remote_fpath: str,
+    from_branch: str = "main") -> any:
+    """ Reads the content from file in remote Github repository branch.
+
+    Parameters:
+        user_name (str): The Github user.
+        repo_name (str): The Remote repository name.
+        from_remote_fpath (str): The relative filepath within the remote repository.
+        from_branch (str): The branch of the repository to pull from.
+
+    Returns:
+        fcontent (any): The contents of the remote file.
+    """
+    page = requests.get(
+        web_remote_fpath(user_name, repo_name, from_remote_fpath, from_branch)
+    )
+    
+    return page.content
+
+def read_remote_csv(user_name: str, repo_name: str, from_remote_fpath: str,
+    from_branch: str = "main", **read_csv_kwargs) -> pd.DataFrame:
+    # Wrapper around <read_remote_file> to read csv into pandas dataframes.
+    return pd.read_csv(io.BytesIO(read_remote_file(user_name, repo_name,
+            from_remote_fpath, from_branch)), **read_csv_kwargs)
 
 if __name__ == "__main__":
     pass
