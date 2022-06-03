@@ -26,7 +26,7 @@ class RedirectIOStream:
 class FunctionWrapper:
     def __init__(self, function: callable, **default_kwargs):
         self.wrapped_function = function
-        self.default_kwargs = self.compatible_kwargs(default_kwargs)
+        self.default_kwargs = self.compatible_kwargs(**default_kwargs)
 
     def compatible_kwargs(self, **kwargs) -> dict:
         method_arg_keywords = inspect.getargspec(self.wrapped_function)[0]
@@ -44,7 +44,7 @@ class FunctionWrapper:
             # Set kwarg from default_kwargs
             kwargs[kw] = arg
 
-        return self.compatible_kwargs(kwargs)
+        return self.compatible_kwargs(**kwargs)
 
     def __call__(self, *args, **kwargs) -> any:
         return self.wrapped_function(*args, **self.updated_kwargs(**kwargs))
