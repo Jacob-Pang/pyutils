@@ -70,20 +70,19 @@ def scheduler_call(freq: float, num_calls: int = None,
 
     return scheduler_call_factory
 
-def run_scheduler(scheduler_calls: Iterable, **override_kwargs) -> None:
-    schedule = heapq.heapify(scheduler_calls)
+def run_scheduler(scheduler_calls, **override_kwargs) -> None:
+    heapq.heapify(scheduler_calls)
 
-    while schedule:
-        next_scheduler_call = heapq.heappop(schedule)
+    while scheduler_calls:
+        next_scheduler_call = heapq.heappop(scheduler_calls)
 
         if next_scheduler_call.scheduled_time:
             time.sleep(max(next_scheduler_call.scheduled_time - time.time(), 0))
 
-        print("calling")
         next_scheduler_call(**override_kwargs)
 
         if next_scheduler_call.scheduled_time:
-            heapq.heappush(next_scheduler_call)
+            heapq.heappush(scheduler_calls, next_scheduler_call)
 
 def run_scheduler_on_modules(modules: any, **override_kwargs):
     scheduler_calls = []
