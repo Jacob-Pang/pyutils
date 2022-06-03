@@ -54,11 +54,11 @@ def import_module_from_path(module_fpath: str):
 
     return module
 
-def scheduler_call_factory(freq: float, num_calls: int = None,
+def scheduler_call(freq: float, num_calls: int = None,
     expected_time_requirement: float = 0, call_message: str = None,
     **default_kwargs) -> callable:
 
-    def scheduler_call_decorator(method: callable):
+    def scheduler_call_factory(method: callable):
         return SchedulerCall(
             method,
             freq=freq,
@@ -68,7 +68,7 @@ def scheduler_call_factory(freq: float, num_calls: int = None,
             **default_kwargs
         )
 
-    return scheduler_call_decorator
+    return scheduler_call_factory
 
 def run_scheduler(scheduler_calls: Iterable, **override_kwargs) -> None:
     schedule = heapq.heapify(scheduler_calls)
