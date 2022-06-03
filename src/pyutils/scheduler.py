@@ -79,6 +79,7 @@ def run_scheduler(scheduler_calls: Iterable, **override_kwargs) -> None:
         if next_scheduler_call.scheduled_time:
             time.sleep(max(next_scheduler_call.scheduled_time - time.time(), 0))
 
+        print("calling")
         next_scheduler_call(**override_kwargs)
 
         if next_scheduler_call.scheduled_time:
