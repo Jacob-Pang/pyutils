@@ -9,7 +9,8 @@ from collections.abc import Iterable
 
 def push_files(access_token: str, repo_name: str, from_local_fpaths: Iterable,
     to_remote_dpaths: Iterable = "", to_branch: str = "main", commit_msg: str = "",
-    file_encodings: Iterable = "utf-8", timeout: int = 15) -> None:
+    file_encodings: Iterable = "utf-8", timeout: int = 15,
+    commit_batch_size: int = 10) -> None:
     """ Commit and pushed files from local to remote Github repository branch.
 
     Parameters:
@@ -30,6 +31,8 @@ def push_files(access_token: str, repo_name: str, from_local_fpaths: Iterable,
                 all files will be decoded using this encoding format.
         timeout (int): The number of seconds to wait before terminating
                 https connection requests.
+        commit_batch_size (int): The maximum number of files to push within
+                one commit, and partition the files by.
     """
     def get_local_contents(local_fpath: str, encoding: str) -> any:
         try: 
@@ -46,6 +49,22 @@ def push_files(access_token: str, repo_name: str, from_local_fpaths: Iterable,
 
     if isinstance(file_encodings, str):
         file_encodings = [ file_encodings for _ in from_local_fpaths ]
+
+    if len(from_local_fpaths) > commit_batch_size:
+        push_files(
+            access_token, repo_name,
+            from_local_fpaths=from_local_fpaths[commit_batch_size:],
+            to_remote_dpaths=to_remote_dpaths[commit_batch_size:],
+            to_branch=to_branch,
+            commit_msg=commit_msg,
+            file_encodings=file_encodings[commit_batch_size:],
+            timeout=timeout,
+            commit_batch_size=commit_batch_size
+        )
+
+        from_local_fpaths = from_local_fpaths[:commit_batch_size]
+        to_remote_dpaths = to_remote_dpaths[:commit_batch_size]
+        file_encodings = file_encodings[:commit_batch_size]
 
     git_client = Github(access_token, timeout=timeout, retry=5)
     repo = git_client.get_user().get_repo(repo_name)
@@ -84,7 +103,7 @@ def push_files(access_token: str, repo_name: str, from_local_fpaths: Iterable,
 
 def push_directory(access_token: str, repo_name: str, from_local_dpath: str = os.getcwd(),
     to_remote_dpath: str = "", to_branch: str = "main", commit_msg: str = "",
-    timeout: int = 15) -> None:
+    timeout: int = 15, commit_batch_size: int = 10) -> None:
     """ Commit and push directory from local to remote Github repository, preserving
     directory tree structure.
 
@@ -99,6 +118,8 @@ def push_directory(access_token: str, repo_name: str, from_local_dpath: str = os
         commit_msg (str): The commit message to use.
         timeout (int): The number of seconds to wait before terminating
                 https connection requests.
+        commit_batch_size (int): The maximum number of files to push within
+                one commit, and partition the files by.
     """
     from_local_fpaths = []
     to_remote_dpaths = []
@@ -119,7 +140,8 @@ def push_directory(access_token: str, repo_name: str, from_local_dpath: str = os
             )
 
     push_files(access_token, repo_name, from_local_fpaths, to_remote_dpaths,
-            to_branch, commit_msg, timeout=timeout)
+            to_branch, commit_msg, timeout=timeout,
+            commit_batch_size=commit_batch_size)
 
 def pull_directory(user_name: str, repo_name: str, from_remote_dpath: str = "",
     to_local_dpath: str = os.getcwd(), from_branch: str = "main") -> None:
