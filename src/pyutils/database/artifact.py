@@ -29,7 +29,7 @@ class Artifact (DataNode):
     def update_data(self, artifact_data: any, *args, **kwargs) -> None:
         self.save_data(artifact_data, *args, **kwargs)
 
-    def get_update_tasks(self) -> list:
+    def get_update_tasks(self, *args, **kwargs) -> list:
         return []
 
     def __str__(self) -> str:

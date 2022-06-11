@@ -121,6 +121,18 @@ class ParquetDataFrame (DataFrame):
         partition_cols: list = None, *args, **kwargs) -> None:
         artifact_data.to_parquet(path, partition_cols=partition_cols)
 
+        """ to be evaluated if renaming is required.
+        if not os.path.isdir(path):
+            return
+        
+        # Partitioned dataframe
+        file_paths = list(glob.glob(os.path.join(path, "**"), recursive=True))
+
+        for file_path in file_paths: # Rename partitioned files
+            dpath, _ = os.path.split(file_path)
+            os.rename(file_path, os.path.join(dpath, f"{self.data_node_id}.parquet"))
+        """
+
     def read_data(self, *args, filters: list = None, **kwargs) -> pd.DataFrame:
         if filters: # Apply reduced dtyping to values
             filters = self.apply_schema_to_filters(filters)
