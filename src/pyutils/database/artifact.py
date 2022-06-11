@@ -3,6 +3,7 @@ import pickle
 import time
 
 from .data_node import DataNode
+from ..pytask_scheduler.task_scheduler import PyTask
 
 class Artifact (DataNode):
     def make_connection_dpath(self) -> None:
@@ -28,6 +29,13 @@ class Artifact (DataNode):
 
     def update_data(self, artifact_data: any, *args, **kwargs) -> None:
         self.save_data(artifact_data, *args, **kwargs)
+
+    def __update_task(self) -> None:
+        pass
+
+    def get_update_task(self) -> PyTask:
+        return PyTask(function=self.__update_task,
+                task_id=self.data_node_id)
 
     def __str__(self) -> str:
         return "ARTIFACT"
