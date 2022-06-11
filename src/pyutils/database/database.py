@@ -114,12 +114,14 @@ class DataBase (DataNode):
         return pd.DataFrame(catalog, columns=["ID", "category",
                 "description", *lookup_fields])       
 
-    def get_update_tasks(self, recursive: bool = False) -> list:
-        return [
-            child_node.get_update_task()
-            for child_node in self.get_child_nodes(recursive=recursive)
-            if hasattr(child_node, "get_update_task")
-        ]
+    def get_update_tasks(self) -> list:
+        update_tasks = []
 
+        for child_node in self.get_child_nodes(recursive=False):
+            if hasattr(child_node, "get_update_tasks"):
+                update_tasks.extend(child_node.get_update_tasks())
+        
+        return update_tasks
+        
 if __name__ == "__main__":
     pass
