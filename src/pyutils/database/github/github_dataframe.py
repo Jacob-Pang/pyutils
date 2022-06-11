@@ -15,7 +15,7 @@ class GitHubDataFrame (GitHubArtifact, DataFrame):
     def save_data_to_path(self, artifact_data: any, path: str, *args,
         authenticated_repo: Repository = None, access_token: str = None,
         commit_message: str = '', **kwargs) -> None:
-        file_content = io.BytesIO()
+        file_content = io.StringIO()
         artifact_data.to_csv(file_content, index=False)
         GitHubArtifact.save_data_to_path(self, file_content, path, *args,
                 authenticated_repo=authenticated_repo, access_token=access_token,
