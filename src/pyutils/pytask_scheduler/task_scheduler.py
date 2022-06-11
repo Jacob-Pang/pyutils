@@ -7,7 +7,7 @@ from ..wrappers import FunctionWrapper
 class PyTask (FunctionWrapper):
     def __init__(self, function: callable, task_id: str = None,
         scheduled_time: int = time.time(), freq: int = None, task_count: int = None,
-        request_provider_id: str = None, request_count: int = 1, **default_kwargs):
+        request_provider_id_to_count: dict = {}, **default_kwargs):
         """
         Parameters:
             function (callable): The function to call in order to run the task.
@@ -19,8 +19,8 @@ class PyTask (FunctionWrapper):
             task_count (int): The number of times to run the task. If unspecified
                     (None), the task is repeatedly run indefinitely.
             provider_id (str): The request provider id to track runs.
-            request_count (int): The number of requests to track for each run
-                    with respect to the request provider.
+            request_provider_id_to_count (dict): The mapping of request
+                    provider ID to the number of requests consumed for the task.
         """
         FunctionWrapper.__init__(self, function, **default_kwargs)
         self.task_id = f"pytask_{int(random.random() * 1e5)}_{int(time.time())}" \
@@ -29,8 +29,7 @@ class PyTask (FunctionWrapper):
         self.scheduled_time = scheduled_time
         self.freq = freq
         self.task_count = task_count
-        self.request_provider_id = request_provider_id
-        self.request_count = request_count
+        self.request_provider_id_to_count = request_provider_id_to_count
 
     def __call__(self, *args, **kwargs) -> any:
         if self.task_count:
@@ -60,29 +59,35 @@ class TaskScheduler:
             while task.scheduled_time > time.time():
                 time.sleep(1) # Busy waiting
             
-            request_provider = self.request_providers.get(task.request_provider_id) \
-                if task.request_provider_id and task.request_provider_id in \
-                self.request_providers else None
+            # Schedule requests by provider
+            for request_provider_id, request_count in task.request_provider_id_to_count.items():
+                if request_provider_id not in self.request_providers:
+                    continue
 
-            if request_provider: # Requests have to be scheduled for the task
-                task.scheduled_time = request_provider.schedule_requests(task.request_count)
+                task.scheduled_time = self.request_providers.get(request_provider_id) \
+                        .schedule_requests(request_count)
 
                 if not task.scheduled_time <= time.time():
                     heapq.heappush(tasks, task) # Reschedule task
-                    print(f"{int(time.time())}: RequestProvider <{task.request_provider_id}>",
+                    print(f"{int(time.time())}: RequestProvider <{request_provider_id}>",
                             f"reached maximum requests limit. Task <{task.task_id}>",
                             f"rescheduled to {int(task.scheduled_time)}")
                     continue
-            
-                # Send requests to provider
-                request_provider.run_requests(task.task_id, task.request_count)
+
+            # Run requests by provider
+            for request_provider_id, request_count in task.request_provider_id_to_count.items():
+                if request_provider_id in self.request_providers:
+                    self.request_providers.get(request_provider_id).run_requests(
+                            task.task_id, request_count)
 
             print(f"{int(time.time())}: Running task <{task.task_id}> ... ", end='')
             task(**kwargs) # Run task
             print(f"completed at {int(time.time())}.")
 
-            if request_provider: # Send completed status to provider
-                request_provider.complete_requests(task.task_id)
+            # Complete requests by provider
+            for request_provider_id, request_count in task.request_provider_id_to_count.items():
+                if request_provider_id in self.request_providers:
+                    self.request_providers.get(request_provider_id).complete_requests(task.task_id)
 
             if task.scheduled_time:
                 heapq.heappush(tasks, task)
