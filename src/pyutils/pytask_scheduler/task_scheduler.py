@@ -72,7 +72,10 @@ class TaskScheduler:
                     print(f"{int(time.time())}: RequestProvider <{request_provider_id}>",
                             f"reached maximum requests limit. Task <{task.task_id}>",
                             f"rescheduled to {int(task.scheduled_time)}")
-                    continue
+                    break
+
+            if not task.scheduled_time <= time.time():
+                continue # Skip rescheduled 
 
             # Run requests by provider
             for request_provider_id, request_count in task.request_provider_id_to_count.items():
