@@ -15,9 +15,6 @@ class DataFrame (Artifact):
     def save_data(self, artifact_data: pd.DataFrame, *args, **kwargs) -> None:
         self.dataframe_schema = ReducedDataFrameSchema()
         self.dataframe_schema.set_reduced_schema(artifact_data)
-        print(artifact_data)
-        artifact_data.to_csv("out.csv")
-        print(self.dataframe_schema.__dict__)
         self.dataframe_schema.apply_reduced_schema(artifact_data, inplace=True)
 
         return Artifact.save_data(self, artifact_data, *args, **kwargs)

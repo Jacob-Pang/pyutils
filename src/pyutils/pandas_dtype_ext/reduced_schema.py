@@ -47,10 +47,15 @@ class ReducedDataFrameSchema:
 
         for column, reduced_dtype in self.map_column_to_rdtype.items():
             if column in pdf.columns:
-                print(column)
-                print(pdf[column])
-                print(reduced_dtype.apply(pdf[column]))
-                pdf.loc[:, column] = reduced_dtype.apply(pdf[column])
+                try:
+                    pdf.loc[:, column] = reduced_dtype.apply(pdf[column])
+                except:
+                    print("Logging error:")
+                    print(column)
+                    print(pdf[column])
+                    print(reduced_dtype.apply(pdf[column]))
+                    print(self.__dict__)
+                    raise Exception
 
     def reverse_reduced_schema(self, pdf: pd.DataFrame, inplace: bool = False) -> any:
         if not inplace: # Create copy to prevent overriding of values
