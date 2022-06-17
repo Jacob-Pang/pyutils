@@ -64,10 +64,13 @@ class RequestLimitBlock:
         self.request_counter += request_count
 
 class RequestProvider:
-    def __init__(self, request_limits: list = None, default_reschedule: int = 60):
+    def __init__(self, request_limits: list = None, default_reschedule: int = 60,
+        api_key: int = None):
+
         self.running_tasks = {}
         self.running_request_count = 0
         self.default_reschdule = default_reschedule
+        self.api_key = api_key
 
         self.request_limit_blocks = RequestLimitBlock(request_limits) \
                 if request_limits else None
@@ -93,6 +96,57 @@ class RequestProvider:
                 self.running_tasks.get(request_id))
         
         self.running_request_count -= self.running_tasks.pop(request_id)
+
+class RequestProviderManager:
+    def __init__(self) -> None:
+        self.request_providers = {}
+
+    def add_request_provider(self, request_provider_id: str, request_provider: any) -> None:
+        if request_provider_id in self.request_providers:
+            return self.request_providers.get(request_provider_id).append(request_provider)
+        
+        self[request_provider_id] = [request_provider]
+
+    def schedule_requests(self, request_provider_usage: dict = {}) -> tuple:
+        """
+        Parameters:
+            request_provider_usage (dict): The mapping of { request_provider_id: request_counts }.
+        
+        Returns:
+            scheduled_time (int): The next time at which the requests can be processed, such that
+                    there are no conflicts with the required request_providers.
+            request_providers (dict): The mapping of { request_provider_id: request_provider }.
+            constraint_request_provider_id (int): The ID of the request provider that acts as the
+                    constraint on the scheduled time, such that <scheduled_time> is scheduled by
+                    this request provider.
+
+        Notes:
+            where <scheduled_time> > current time, the requests are effectively blocked, and
+                    conversely, the opposite implies that all request providers returned have
+                    spare capacity to execute the requests at the usage rates specified.
+        """
+        scheduled_time = time.time()
+        request_providers = {}
+        constraint_request_provider_id = None
+
+        for request_provider_id, request_count in request_provider_usage.items():
+            if request_provider_id not in self.request_providers:
+                continue
+
+            min_scheduled_time = time.time()
+
+            for request_provider in self.request_providers.get(request_provider_id):
+                _scheduled_time = request_provider.schedule_requests(request_count)
+                
+                if min_scheduled_time > _scheduled_time: # Set request provider to use
+                    request_providers[request_provider_id] = request_provider
+                    min_scheduled_time = _scheduled_time
+
+                if _scheduled_time > scheduled_time:
+                    constraint_request_provider_id = request_provider_id
+                    scheduled_time = _scheduled_time
+                
+        return scheduled_time, request_providers, constraint_request_provider_id
 
 if __name__ == "__main__":
     pass
