@@ -153,7 +153,10 @@ class RequestProviderManager:
             if not scheduled_time or min_scheduled_time > scheduled_time:
                 scheduled_time = min_scheduled_time
                 blocking_request_provider_id = min_request_provider_id
-                
+        
+        if not scheduled_time: # No requests required.
+            scheduled_time = time.time()
+
         return scheduled_time, request_providers, blocking_request_provider_id
 
 if __name__ == "__main__":
