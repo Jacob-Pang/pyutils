@@ -105,7 +105,7 @@ class RequestProviderManager:
         if request_provider_id in self.request_providers:
             return self.request_providers.get(request_provider_id).append(request_provider)
         
-        self[request_provider_id] = [request_provider]
+        self.request_providers[request_provider_id] = [request_provider]
 
     def schedule_requests(self, request_provider_usage: dict = {}) -> tuple:
         """
