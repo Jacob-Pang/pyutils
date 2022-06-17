@@ -75,7 +75,11 @@ class GitHubDataBase (GitHubDataNode, DataBase):
 
     def save_database_memory(self, *args, access_token: str = None, commit_message: str = '',
         save_child_nodes: bool = True, **kwargs) -> None:
+
         authenticated_repo = self.get_authenticated_repo(access_token)
+        authenticated_user = self.authenticated_user
+        repository = self.repository
+
         # Removes cached authenticated github user and repositories
         self.authenticated_user = None
         self.authenticated_repo = None
@@ -84,6 +88,11 @@ class GitHubDataBase (GitHubDataNode, DataBase):
         DataBase.save_database_memory(self, *args, authenticated_repo=authenticated_repo,
                 access_token=access_token, commit_message=commit_message, **kwargs)
         
+        # Reset cached authenticated github user and repositories
+        self.authenticated_user = authenticated_user
+        self.authenticated_repo = authenticated_repo
+        self.repository = repository
+
         if not save_child_nodes: return
 
         for child_node in self.child_nodes.values():
