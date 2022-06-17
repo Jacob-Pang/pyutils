@@ -29,15 +29,15 @@ class FunctionWrapper:
         self.default_kwargs = self.compatible_kwargs(**default_kwargs)
 
     def compatible_kwargs(self, **kwargs) -> dict:
-        """
-        method_arg_keywords = inspect.getargspec(self.wrapped_function)[0]
+        method_keywords = [
+            *inspect.getfullargspec(self.wrapped_function)[0],  # args
+            *inspect.getfullargspec(self.wrapped_function)[4]   # kwonlyargs
+        ]
 
         return {
             kw: arg for kw, arg in kwargs.items()
-            if kw in method_arg_keywords
+            if kw in method_keywords
         }
-        """
-        return kwargs
 
     def updated_kwargs(self, **kwargs) -> dict:
         for kw, arg in self.default_kwargs.items():
