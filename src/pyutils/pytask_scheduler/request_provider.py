@@ -40,6 +40,10 @@ class RequestLimitBlock:
 
         working_request_limit = self.request_limit - running_request_count
 
+        # TO REMOVE
+        print(working_request_limit)
+        print(self.get_request_count())
+
         scheduled_time = time.time() if (self.get_request_count() + request_count) \
                 <= working_request_limit else self.completed_requests[(request_count -
                 working_request_limit + self.get_request_count())][0] + self.duration
@@ -92,8 +96,7 @@ class RequestProvider:
 
     def complete_requests(self, request_id: str) -> None:
         if self.request_limit_blocks:
-            self.request_limit_blocks.record_requests(
-                self.running_tasks.get(request_id))
+            self.request_limit_blocks.record_requests(self.running_tasks.get(request_id))
         
         self.running_request_count -= self.running_tasks.pop(request_id)
 
