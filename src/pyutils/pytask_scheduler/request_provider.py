@@ -41,7 +41,7 @@ class RequestLimitBlock:
         working_request_limit = self.request_limit - running_request_count
 
         scheduled_time = time.time() if (self.get_request_count() + request_count) \
-                < working_request_limit else self.completed_requests[(request_count -
+                <= working_request_limit else self.completed_requests[(request_count -
                 working_request_limit + self.get_request_count())][0] + self.duration
 
         if not self.child_block:
@@ -131,6 +131,7 @@ class RequestProviderManager:
 
         for request_provider_id, request_count in request_provider_usage.items():
             if request_provider_id not in self.request_providers:
+                print(request_provider_id, "not found in rpm") # TO REMOVE
                 continue
 
             min_scheduled_time = time.time()
@@ -138,7 +139,7 @@ class RequestProviderManager:
             for request_provider in self.request_providers.get(request_provider_id):
                 _scheduled_time = request_provider.schedule_requests(request_count)
                 
-                if min_scheduled_time > _scheduled_time: # Set request provider to use
+                if _scheduled_time < min_scheduled_time: # Set request provider to use
                     request_providers[request_provider_id] = request_provider
                     min_scheduled_time = _scheduled_time
 
