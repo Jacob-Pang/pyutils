@@ -74,7 +74,6 @@ class PyTaskScheduler:
                     .request_provider_manager.schedule_requests(task.request_provider_usage)
 
             task.schedule(scheduled_time)
-            print(scheduled_time) # TO REMOVE
 
             if scheduled_time > time.time():
                 heapq.heappush(tasks, task) # Requeue blocked task

@@ -39,11 +39,6 @@ class RequestLimitBlock:
             return None # No current next available time
 
         working_request_limit = self.request_limit - running_request_count
-
-        # TO REMOVE
-        print(working_request_limit)
-        print(self.get_request_count())
-
         scheduled_time = time.time() if (self.get_request_count() + request_count) \
                 <= working_request_limit else self.completed_requests[(request_count -
                 working_request_limit + self.get_request_count())][0] + self.duration
@@ -119,7 +114,7 @@ class RequestProviderManager:
             scheduled_time (int): The next time at which the requests can be processed, such that
                     there are no conflicts with the required request_providers.
             request_providers (dict): The mapping of { request_provider_id: request_provider }.
-            constraint_request_provider_id (int): The ID of the request provider that acts as the
+            blocking_request_provider_id (int): The ID of the request provider that acts as the
                     constraint on the scheduled time, such that <scheduled_time> is scheduled by
                     this request provider.
 
@@ -128,29 +123,38 @@ class RequestProviderManager:
                     conversely, the opposite implies that all request providers returned have
                     spare capacity to execute the requests at the usage rates specified.
         """
-        scheduled_time = time.time()
+        scheduled_time, blocking_request_provider_id = None, None
         request_providers = {}
-        constraint_request_provider_id = None
 
         for request_provider_id, request_count in request_provider_usage.items():
             if request_provider_id not in self.request_providers:
-                print(request_provider_id, "not found in rpm") # TO REMOVE
                 continue
-
-            min_scheduled_time = time.time()
+            
+            # Constraint within same request provider ID should be found based on
+            #   minimum criteria on scheduled time.
+            min_scheduled_time, min_request_provider_id = None, None
 
             for request_provider in self.request_providers.get(request_provider_id):
                 _scheduled_time = request_provider.schedule_requests(request_count)
                 
-                if _scheduled_time < min_scheduled_time: # Set request provider to use
+                if _scheduled_time <= time.time():
                     request_providers[request_provider_id] = request_provider
-                    min_scheduled_time = _scheduled_time
+                    break
 
-                if _scheduled_time > scheduled_time:
-                    constraint_request_provider_id = request_provider_id
-                    scheduled_time = _scheduled_time
+                if not min_scheduled_time or _scheduled_time < min_scheduled_time:
+                    min_scheduled_time = _scheduled_time
+                    min_request_provider_id = request_provider_id
+
+            if request_provider_id in request_providers:
+                continue # Request provider with spare capacity exists
+            
+            # Constraint across different request provider ID should be found based on
+            #   maximum criteria on scheduled time.
+            if not scheduled_time or min_scheduled_time > scheduled_time:
+                scheduled_time = min_scheduled_time
+                blocking_request_provider_id = min_request_provider_id
                 
-        return scheduled_time, request_providers, constraint_request_provider_id
+        return scheduled_time, request_providers, blocking_request_provider_id
 
 if __name__ == "__main__":
     pass
