@@ -46,7 +46,7 @@ class GitHubDataBase (GitHubDataNode, DataBase):
     def get_branch(self) -> str:
         return self.branch
 
-    def get_authenticated_user(self, access_token: str = None) -> AuthenticatedUser:
+    def get_authenticated_user(self, access_token: str = None) -> AuthenticatedUser:           
         if self.authenticated_user:
             return self.authenticated_user
         
@@ -73,32 +73,31 @@ class GitHubDataBase (GitHubDataNode, DataBase):
         self.repository = get_repository(self.get_repo_name(), self.get_user_name())
         return self.repository
 
-    def save_database_memory(self, *args, access_token: str = None, commit_message: str = '',
-        save_child_nodes: bool = True, **kwargs) -> None:
-
-        authenticated_repo = self.get_authenticated_repo(access_token)
-        authenticated_user = self.authenticated_user
-        repository = self.repository
-
-        # Removes cached authenticated github user and repositories
+    def destroy_authentication_cache(self) -> None:
         self.authenticated_user = None
         self.authenticated_repo = None
         self.repository = None
 
-        DataBase.save_database_memory(self, *args, authenticated_repo=authenticated_repo,
-                access_token=access_token, commit_message=commit_message, **kwargs)
-        
-        # Reset cached authenticated github user and repositories
-        self.authenticated_user = authenticated_user
-        self.authenticated_repo = authenticated_repo
-        self.repository = repository
-
-        if not save_child_nodes: return
-
+    def save_database_memory(self, *args, access_token: str = None, commit_message: str = '',
+        save_child_nodes: bool = True, **kwargs) -> None:
+        """
+        Notes:
+            method removes cached authenticated github objects before saving. User has to
+                provide access token again to re-authenticate in subsequent writes.
+        """
         for child_node in self.child_nodes.values():
             if isinstance(child_node, GitHubDataBase):
-                child_node.save_database_memory(*args, access_token=access_token,
-                        commit_message=commit_message, save_child_nodes=True, **kwargs)
+                if save_child_nodes:
+                    child_node.save_database_memory(*args, access_token=access_token,
+                            commit_message=commit_message, save_child_nodes=True, **kwargs)
+                
+                child_node.destroy_authentication_cache()
+
+        authenticated_repo = self.get_authenticated_repo(access_token)
+        self.destroy_authentication_cache()
+
+        DataBase.save_database_memory(self, *args, authenticated_repo=authenticated_repo,
+                access_token=access_token, commit_message=commit_message, **kwargs)
 
     def autosave_database_memory(self) -> None:
         pass # Does not perform auto save
