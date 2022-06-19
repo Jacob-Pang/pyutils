@@ -73,6 +73,9 @@ class PyTaskScheduler:
             scheduled_time, request_providers, constraint_request_provider_id = self \
                     .request_provider_manager.schedule_requests(task.request_provider_usage)
 
+            # TO REMOVE
+            print(task.request_provider_usage)
+            print(request_providers)
             task.schedule(scheduled_time)
 
             if scheduled_time > time.time():
@@ -91,7 +94,7 @@ class PyTaskScheduler:
                 api_keys[request_provider_id] = request_provider.api_key
                 print("request_provider", request_provider_id, "running requests", task.request_provider_usage \
                             .get(request_provider_id)) # TO REMOVE
-                            
+
                 request_provider.run_requests(task.task_id, task.request_provider_usage \
                             .get(request_provider_id))
                 
