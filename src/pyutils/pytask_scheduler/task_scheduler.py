@@ -89,6 +89,9 @@ class PyTaskScheduler:
 
             for request_provider_id, request_provider in request_providers.items():
                 api_keys[request_provider_id] = request_provider.api_key
+                print("request_provider", request_provider_id, "running requests", task.request_provider_usage \
+                            .get(request_provider_id)) # TO REMOVE
+                            
                 request_provider.run_requests(task.task_id, task.request_provider_usage \
                             .get(request_provider_id))
                 
