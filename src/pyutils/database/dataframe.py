@@ -2,8 +2,8 @@ import glob
 import os
 import pandas as pd
 
-from .artifact import Artifact
-from ..pandas_dtype_ext.reduced_schema import ReducedDataFrameSchema
+from pyutils.database.artifact import Artifact
+from pyutils.pandas_dtype_ext.reduced_schema import ReducedDataFrameSchema
 
 class DataFrame (Artifact):
     def __init__(self, data_node_id: str, connection_dpath: str = os.getcwd(),

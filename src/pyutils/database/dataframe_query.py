@@ -1,8 +1,8 @@
 import pandas as pd
 
 from collections.abc import Iterable
-from .artifact import Artifact
-from .dataframe import DataFrame
+from pyutils.database.artifact import Artifact
+from pyutils.database.dataframe import DataFrame
 
 class DataFrameQuery (DataFrame):
     def __init__(self, data_node_id: str, connected_dataframe: DataFrame,

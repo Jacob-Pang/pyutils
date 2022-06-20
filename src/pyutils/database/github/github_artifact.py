@@ -1,10 +1,10 @@
 import pickle
 
 from github import Repository
-from .github_data_node import GitHubDataNode
-from ..artifact import Artifact, PickleFile
-from ...github_ops.write_ops import write_files
-from ...github_ops.read_ops import read_file, read_pickle
+from pyutils.database.github.github_data_node import GitHubDataNode
+from pyutils.database.artifact import Artifact, PickleFile
+from pyutils.github_ops.write_ops import write_files
+from pyutils.github_ops.read_ops import read_file, read_pickle
 
 class GitHubArtifact (GitHubDataNode, Artifact):
     def make_connection_dpath(self) -> None:

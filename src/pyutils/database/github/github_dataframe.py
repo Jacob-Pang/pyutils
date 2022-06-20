@@ -5,11 +5,11 @@ import time
 import pandas as pd
 
 from github import Repository
-from .github_artifact import GitHubArtifact
-from ..dataframe import DataFrame, ParquetDataFrame
-from ...github_ops.common import github_relative_path, repository_walk
-from ...github_ops.write_ops import delete_file, push_directory, write_files
-from ...github_ops.read_ops import pull_directory, read_csv_to_pandas, read_parquet_to_pandas
+from pyutils.database.github.github_artifact import GitHubArtifact
+from pyutils.database.dataframe import DataFrame, ParquetDataFrame
+from pyutils.github_ops.common import github_relative_path, repository_walk
+from pyutils.github_ops.write_ops import delete_file, push_directory, write_files
+from pyutils.github_ops.read_ops import pull_directory, read_csv_to_pandas, read_parquet_to_pandas
 
 class GitHubDataFrame (GitHubArtifact, DataFrame):
     def save_data_to_path(self, artifact_data: any, path: str, *args,

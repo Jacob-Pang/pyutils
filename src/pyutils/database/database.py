@@ -1,9 +1,10 @@
 import os
 import pandas as pd
+import pyutils
 
 from collections.abc import Iterable
-from .data_node import DataNode
-from .artifact import PickleFile
+from pyutils.database.data_node import DataNode
+from pyutils.database.artifact import DillFile
 
 class DataBase (DataNode):
     @staticmethod
@@ -13,7 +14,7 @@ class DataBase (DataNode):
     @staticmethod
     def restore_database(data_node_id: str, 
         connection_dpath: str = os.getcwd()) -> DataNode:
-        return PickleFile(DataBase.memory_file_name(data_node_id), connection_dpath).read_data()
+        return DillFile(DataBase.memory_file_name(data_node_id), connection_dpath).read_data()
 
     def __init__(self, data_node_id: str, connection_dpath: str = os.getcwd(),
         description: str = None, parent_database: any = None, **field_kwargs) -> None:
@@ -23,14 +24,15 @@ class DataBase (DataNode):
         self.add_memory_node()
         
     def add_memory_node(self) -> None:
-        memory_node = PickleFile(DataBase.memory_file_name(self.data_node_id),
+        memory_node = DillFile(DataBase.memory_file_name(self.data_node_id),
                 description="persistent database memory structure")
 
         self.add_connected_child_node(memory_node)
 
-    def save_database_memory(self, *args, **kwargs) -> None:
+    def save_database_memory(self, *args, skip_modules: set = set(), **kwargs) -> None:
+        skip_modules.add(pyutils)
         self.get_child_node(DataBase.memory_file_name(self.data_node_id)).save_data(
-                self, *args, **kwargs)
+                self, *args, skip_modules=skip_modules, **kwargs)
 
     def autosave_database_memory(self) -> None:
         self.save_database_memory()

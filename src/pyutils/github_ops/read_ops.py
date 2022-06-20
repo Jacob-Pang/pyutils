@@ -7,7 +7,7 @@ import pandas as pd
 
 from github import Github, Repository
 from collections.abc import Iterable
-from .common import get_repository, raw_github_link, repository_walk
+from pyutils.github_ops.common import get_repository, raw_github_link, repository_walk
 
 def read_file(user_name: str, repository_name: str, from_remote_file_path: str,
     branch: str = "main") -> any:

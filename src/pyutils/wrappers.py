@@ -2,6 +2,10 @@ import inspect
 import sys
 
 class RedirectIOStream:
+    """
+    Notes:
+        set dest to <os.devnull> to silence all outputs.
+    """
     def __init__(self, stdout_dest = sys.stdout, stderr_dest = sys.stderr,
         stdin_dest = sys.stdin):
 

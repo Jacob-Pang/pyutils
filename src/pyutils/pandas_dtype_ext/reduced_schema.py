@@ -1,8 +1,8 @@
 import inspect
 import pandas as pd
 
-from . import reduced_dtype as dtypes
-from .reduced_dtype import ReducedDtypeBase
+from pyutils.pandas_dtype_ext import reduced_dtype as dtypes
+from pyutils.pandas_dtype_ext.reduced_dtype import ReducedDtypeBase
 
 REDUCED_DTYPES = [
     dtype for _, dtype in inspect.getmembers(dtypes)

@@ -3,7 +3,7 @@ import os
 from github import Repository
 from github import InputGitTreeElement
 from collections.abc import Iterable
-from .common import github_relative_path, repository_walk
+from pyutils.github_ops.common import github_relative_path, repository_walk
 
 def write_files(authenticated_repo: Repository, file_contents: Iterable,
     to_remote_file_paths: Iterable, branch: str = "main", commit_message: str = '',

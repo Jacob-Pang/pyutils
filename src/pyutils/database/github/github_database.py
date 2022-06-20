@@ -1,11 +1,11 @@
 from github import AuthenticatedUser, Github, Repository
 
-from .github_artifact import GitHubPickleFile
-from .github_data_node import GitHubDataNode
-from ..data_node import DataNode
-from ..database import DataBase
-from ...github_ops.common import get_authenticated_repository, get_repository, github_relative_path
-from ...github_ops.read_ops import read_pickle
+from pyutils.database.github.github_artifact import GitHubPickleFile
+from pyutils.database.github.github_data_node import GitHubDataNode
+from pyutils.database.data_node import DataNode
+from pyutils.database.database import DataBase
+from pyutils.github_ops.common import get_authenticated_repository, get_repository, github_relative_path
+from pyutils.github_ops.read_ops import read_pickle
 
 class GitHubDataBase (GitHubDataNode, DataBase):
     @staticmethod

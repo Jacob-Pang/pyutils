@@ -1,7 +1,7 @@
 from github import AuthenticatedUser, Repository
-from ..data_node import DataNode
-from ...github_ops.common import github_relative_path
-from ...github_ops.write_ops import delete_file
+from pyutils.database.data_node import DataNode
+from pyutils.github_ops.common import github_relative_path
+from pyutils.github_ops.write_ops import delete_file
 
 class GitHubDataNode (DataNode):
     def __init__(self, data_node_id: str, connection_dpath: str = '', description: str = None,

@@ -2,8 +2,8 @@ import time
 import heapq
 import random
 
-from ..wrappers import FunctionWrapper
-from .request_provider import RequestProviderManager
+from pyutils.wrappers import FunctionWrapper
+from pyutils.pytask_scheduler.request_provider import RequestProviderManager
 
 class PyTask (FunctionWrapper):
     def __init__(self, function: callable, task_id: str = None, scheduled_time: int = time.time(),
