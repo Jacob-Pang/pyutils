@@ -218,6 +218,9 @@ def mainify_dependencies(obj: (types.ModuleType | types.FunctionType | object),
             executable_code = compile(source_code, "<string>", "exec")
             exec(executable_code, __main__.__dict__)
         except:
+            print(module.__name__)
+            print(inspect.getsource(module))
+            print("cleaned:")
             print(source_code)
             raise Exception()
         return True
