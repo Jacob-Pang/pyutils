@@ -218,6 +218,9 @@ def mainify_dependencies(obj: (types.ModuleType | types.FunctionType | object),
         
         try:
             source_code = '\n'.join(import_code_chunks) + f"\n{source_code}"
+            print("***************************************************************************************************")
+            print(module.__name__)
+            print(source_code)
             executable_code = compile(source_code, "<string>", "exec")
             exec(executable_code, __main__.__dict__)
             return True
@@ -225,8 +228,6 @@ def mainify_dependencies(obj: (types.ModuleType | types.FunctionType | object),
             print(skip_modules)
             print("*******************************************************************")
             print(inspect.getsource(module))
-            print("********************************************************************")
-            print(source_code)
             raise e
     
     _mainify_dependencies(module)

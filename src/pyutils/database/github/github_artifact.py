@@ -41,7 +41,7 @@ class GitHubPickleFile (GitHubArtifact, PickleFile):
 class GitHubDillFile (GitHubArtifact, DillFile):
     def save_data_to_path(self, artifact_data: any, path: str, *args,
         authenticated_repo: Repository = None, access_token: str = None,
-        commit_message: str = '', **kwargs) -> None:
+        commit_message: str = '', skip_modules: set = set(), **kwargs) -> None:
 
         mainify_dependencies(artifact_data)
         file_content = dill.dumps(artifact_data)

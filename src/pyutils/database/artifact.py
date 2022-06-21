@@ -49,6 +49,7 @@ class PickleFile (Artifact):
 class DillFile (Artifact):
     def save_data_to_path(self, artifact_data: any, path: str, *args, skip_modules: set = set(), **kwargs) -> None:
         mainify_dependencies(artifact_data, skip_modules=skip_modules)
+        
         with open(path, 'wb') as data_file:
             dill.dump(artifact_data, data_file, protocol=pickle.HIGHEST_PROTOCOL)
 
