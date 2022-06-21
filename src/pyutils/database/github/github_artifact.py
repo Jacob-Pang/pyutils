@@ -43,7 +43,7 @@ class GitHubDillFile (GitHubArtifact, DillFile):
         authenticated_repo: Repository = None, access_token: str = None,
         commit_message: str = '', skip_modules: set = set(), **kwargs) -> None:
 
-        mainify_dependencies(artifact_data)
+        mainify_dependencies(artifact_data, skip_modules=skip_modules)
         file_content = dill.dumps(artifact_data)
 
         GitHubArtifact.save_data_to_path(self, file_content, path, *args,

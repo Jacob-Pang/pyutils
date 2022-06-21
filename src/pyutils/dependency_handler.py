@@ -185,16 +185,11 @@ def mainify_dependencies(obj: (types.ModuleType | types.FunctionType | object),
         import_code_chunks, source_code_chunks = [], []
 
         # Extract source code without imports from module while maintaining definition sequence
-        print("///////////////////////////////////////////////////")
-        print(module)
-
         for defined_function in dependency_graph.get(module).defined_functions:
-            print(defined_function)
             function_definition = inspect.getsource(defined_function)
             source_code_chunks.append((source_code.find(function_definition), function_definition))
 
         for defined_class in dependency_graph.get(module).defined_classes:
-            print(defined_class)
             class_definition = inspect.getsource(defined_class)
             source_code_chunks.append((source_code.find(class_definition), class_definition))
 
@@ -221,19 +216,10 @@ def mainify_dependencies(obj: (types.ModuleType | types.FunctionType | object),
             else: # Import in __main__
                 import_code_chunks.append(f"from {parent_module.__name__} import {imported_class.__name__} as {class_name}")
         
-        try:
-            source_code = '\n'.join(import_code_chunks) + f"\n{source_code}"
-            print("***************************************************************************************************")
-            print(module.__name__)
-            print(source_code)
-            executable_code = compile(source_code, "<string>", "exec")
-            exec(executable_code, __main__.__dict__)
-            return True
-        except Exception as e:
-            print(skip_modules)
-            print("*******************************************************************")
-            print(inspect.getsource(module))
-            raise e
+        source_code = '\n'.join(import_code_chunks) + f"\n{source_code}"
+        executable_code = compile(source_code, "<string>", "exec")
+        exec(executable_code, __main__.__dict__)
+        return True
     
     _mainify_dependencies(module)
 
