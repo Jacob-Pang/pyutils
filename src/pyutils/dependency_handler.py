@@ -186,11 +186,13 @@ def mainify_dependencies(obj: (types.ModuleType | types.FunctionType | object),
 
         # Extract source code without imports from module while maintaining definition sequence
         for defined_function in dependency_graph.get(module).defined_functions:
+            print(defined_function)
             function_definition = inspect.getsource(defined_function)
             source_code_chunks.append((source_code.find(function_definition), function_definition))
 
-        for defined_classes in dependency_graph.get(module).defined_classes:
-            class_definition = inspect.getsource(defined_classes)
+        for defined_class in dependency_graph.get(module).defined_classes:
+            print(defined_class)
+            class_definition = inspect.getsource(defined_class)
             source_code_chunks.append((source_code.find(class_definition), class_definition))
 
         source_code = '\n'.join([code_chunk for _, code_chunk in sorted(source_code_chunks)])
