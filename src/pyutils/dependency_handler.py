@@ -6,7 +6,7 @@ import pkgutil
 import sys
 import types
 
-from pyparsing import Iterable
+from collections.abc import Iterable
 from pyutils.wrappers import RedirectIOStream
 """ Dependency Notes:
 
@@ -28,7 +28,7 @@ def graph_dependencies(module: types.ModuleType, dependency_graph: dict = dict()
     skip_modules: set = set()) -> dict:
 
     def _graph_dependencies(module: types.ModuleType) -> None:
-        if not module or builtin_or_stdlib(module) or module in skip_modules:
+        if not module or builtin_or_stdlib(module) or module in skip_modules or module in dependency_graph:
             return
 
         # Set new dependency node
@@ -88,44 +88,40 @@ def has_dependency(obj: (types.ModuleType | types.FunctionType | object),
     dependency: (types.ModuleType | types.FunctionType | object), dependency_graph: dict,
     skip_modules: set = set()):
     # Returns the predicate Dependency(obj, dependency).
+    def _has_dependency(module: types.ModuleType) -> bool:
+        if builtin_or_stdlib(module) or module == __main__ or module in skip_modules:
+            return False
+
+        if not module in dependency_graph: # Unrecorded dependency
+            graph_dependencies(module, dependency_graph)
+
+        skip_modules.add(module)
+
+        # Defined or imported dependency
+        if inspect.ismodule(dependency) and (dependency in dependency_graph.get(obj).defined_modules or \
+            dependency in dependency_graph.get(obj).imported_modules):
+            return True
+
+        if inspect.isfunction(dependency) and (dependency in dependency_graph.get(obj).defined_functions or \
+            dependency in dependency_graph.get(obj).imported_functions):
+            return True
+        
+        if inspect.isclass(dependency) and (dependency in dependency_graph.get(obj).defined_classes or \
+            dependency in dependency_graph.get(obj).imported_classes):
+            return True
+
+        # Recurse through nested modules
+        for module in {*dependency_graph.get(obj).defined_modules, *dependency_graph.get(obj).imported_modules}:
+            if _has_dependency(module):
+                return True
+            
+        return False
+
     if inspect.isfunction(obj) or inspect.isclass(obj):
         # Set the defining module as the subject of dependency
-        return has_dependency(inspect.getmodule(obj), dependency, dependency_graph)
+        return _has_dependency(inspect.getmodule(obj))
     
-    if builtin_or_stdlib(obj): return False
-
-    if not obj in dependency_graph:
-        graph_dependencies(obj, dependency_graph)
-
-    # Defined or imported dependency
-    if inspect.ismodule(dependency) and (dependency in dependency_graph.get(obj).defined_modules or \
-        dependency in dependency_graph.get(obj).imported_modules):
-        return True
-
-    if inspect.isfunction(dependency) and (dependency in dependency_graph.get(obj).defined_functions or \
-        dependency in dependency_graph.get(obj).imported_functions):
-        return True
-    
-    if inspect.isclass(dependency) and (dependency in dependency_graph.get(obj).defined_classes or \
-        dependency in dependency_graph.get(obj).imported_classes):
-        return True
-
-    # Recurse through nested modules
-    for module in dependency_graph.get(obj).defined_modules:
-        if module in skip_modules: continue
-        if has_dependency(module, dependency, dependency_graph, skip_modules=skip_modules):
-            return True
-        
-        skip_modules.add(module)
-
-    for module in dependency_graph.get(obj).imported_modules:
-        if module in skip_modules: continue
-        if has_dependency(module, dependency, dependency_graph, skip_modules=skip_modules):
-            return True
-
-        skip_modules.add(module)
-        
-    return False
+    return _has_dependency(obj)
 
 def mainify_dependencies(obj: (types.ModuleType | types.FunctionType | object),
     dependency_graph: dict = dict(), skip_modules: set = set()) -> None:
@@ -143,8 +139,11 @@ def mainify_dependencies(obj: (types.ModuleType | types.FunctionType | object),
         - <skip_modules> should be provided in order to prevent excessive redefining of
                 nested dependencies; redefines imported packages and their nested
                 dependencies wholesale by default.
+        - mainify_dependencies cannot redefine multiple classes, modules or functions with
+                the same name.
     """
-    if obj.__module__ == "__main__": return
+    if not hasattr(obj, "__module__") or obj.__module__ == "__main__":
+        return
 
     mainified_modules = set()
     module = inspect.getmodule(obj)
@@ -169,7 +168,7 @@ def mainify_dependencies(obj: (types.ModuleType | types.FunctionType | object),
             return False
 
         for skip_module in skip_modules:
-            if has_dependency(skip_module, imported_module, dependency_graph):
+            if has_dependency(skip_module, module, dependency_graph):
                 skip_modules.add(module)
                 return False
 
@@ -204,7 +203,7 @@ def mainify_dependencies(obj: (types.ModuleType | types.FunctionType | object),
             if _mainify_dependencies(imported_module):
                 source_code = decompose_references(source_code, function_name, imported_function.__name__)
             else: # Import in __main__
-                import_code.append(f"from {parent_module.__name__} import {imported_function.__name__}" + \
+                import_code.append(f"from {parent_module.__name__} import {imported_function.__name__} " + \
                         f"as {function_name}")
         
         for imported_class, (class_name, parent_module) in dependency_graph.get(module) \
