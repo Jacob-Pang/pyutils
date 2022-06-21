@@ -5,7 +5,6 @@ from os.path import basename, splitext
 with open("README.md", 'r') as f:
     long_description = f.read()
 
-print(find_packages("src"))
 setup(
     name="pyutils",
     version="1.0",
