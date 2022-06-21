@@ -5,6 +5,8 @@ import os
 import pkgutil
 import sys
 import types
+
+from pyparsing import Iterable
 from pyutils.wrappers import RedirectIOStream
 """ Dependency Notes:
 
@@ -126,13 +128,14 @@ def has_dependency(obj: (types.ModuleType | types.FunctionType | object),
     return False
 
 def mainify_dependencies(obj: (types.ModuleType | types.FunctionType | object),
-    skip_modules: set = set()) -> None:
+    dependency_graph: dict = dict(), skip_modules: set = set()) -> None:
     """ Redefines the object definition in __main__.
 
     Parameters:
         obj (types.ModuleType | types.FunctionType | object): The object which definition
                 should be redefined into __main__.
-        skip_modules (set: types.ModuleType): Modules that should be skipped during the
+        dependency_graph (dict, opt): The output from graph_dependencies.
+        skip_modules (set: types.ModuleType, opt): Modules that should be skipped during the
                 redefinition process and be imported into __main__ instead.
 
     Note:
@@ -145,7 +148,7 @@ def mainify_dependencies(obj: (types.ModuleType | types.FunctionType | object),
 
     mainified_modules = set()
     module = inspect.getmodule(obj)
-    dependency_graph = graph_dependencies(module)
+    dependency_graph = graph_dependencies(module, dependency_graph)
 
     def decompose_references(source_code: str, reference: str, absolute_name: str) -> str:
         source_code_chunks = source_code.split(reference)
@@ -159,16 +162,23 @@ def mainify_dependencies(obj: (types.ModuleType | types.FunctionType | object),
 
         return source_code[2:]
 
-    def _mainify_dependencies(module: types.ModuleType) -> None:
+    def _mainify_dependencies(module: types.ModuleType) -> bool:
         # Redefine definitions within <module> in __main__\
-        if builtin_or_stdlib(module): return
+        # Returns whether the module was mainified.
+        if builtin_or_stdlib(module) or module in mainified_modules or module in skip_modules:
+            return False
+
+        for skip_module in skip_modules:
+            if has_dependency(skip_module, imported_module, dependency_graph):
+                skip_modules.add(module)
+                return False
+
         mainified_modules.add(module)
 
         # Package mainification
         if dependency_graph.get(module).defined_modules:
             for defined_module in dependency_graph.get(module).defined_modules:
-                if not defined_module in skip_modules and not defined_module in mainified_modules:
-                    _mainify_dependencies(defined_module)
+                _mainify_dependencies(defined_module)
             
             return # No subsequent execution required
 
@@ -184,66 +194,46 @@ def mainify_dependencies(obj: (types.ModuleType | types.FunctionType | object),
         source_code = '\n'.join(source_code)
 
         for imported_module, module_name in dependency_graph.get(module).imported_modules.items():
-            if not imported_module in mainified_modules:
-                mainify_import = builtin_or_stdlib(imported_module)
-
-                for skip_module in skip_modules:
-                    if mainify_import: break
-                    if has_dependency(skip_module, imported_module, dependency_graph):
-                        mainify_import = True
-
-                if mainify_import:
-                    import_code.append(f"import {imported_module.__name__} as {module_name}\n")
-                    skip_modules.add(imported_module)
-                else:
-                    _mainify_dependencies(imported_module)
-            
-            if imported_module in mainified_modules:
+            if _mainify_dependencies(imported_module):
                 source_code = source_code.replace(f"{module_name}.", '')
-
+            else: # Import in __main__
+                import_code.append(f"import {imported_module.__name__} as {module_name}\n")
+                
         for imported_function, (function_name, parent_module) in dependency_graph.get(module) \
             .imported_functions.items():
-            if not parent_module in mainified_modules:
-                mainify_import = builtin_or_stdlib(parent_module)
-
-                for skip_module in skip_modules:
-                    if mainify_import: break
-                    if has_dependency(skip_module, parent_module, dependency_graph):
-                        mainify_import = True
-
-                if mainify_import:
-                    import_code.append(f"from {parent_module.__name__} import {imported_function.__name__} as {function_name}")
-                    skip_modules.add(parent_module)
-                else:
-                    _mainify_dependencies(parent_module)
-            
-            if parent_module in mainified_modules:
+            if _mainify_dependencies(imported_module):
                 source_code = decompose_references(source_code, function_name, imported_function.__name__)
+            else: # Import in __main__
+                import_code.append(f"from {parent_module.__name__} import {imported_function.__name__}" + \
+                        f"as {function_name}")
         
         for imported_class, (class_name, parent_module) in dependency_graph.get(module) \
             .imported_classes.items():
-            if not parent_module in mainified_modules:
-                mainify_import = builtin_or_stdlib(parent_module)
-
-                for skip_module in skip_modules:
-                    if mainify_import: break
-                    if has_dependency(skip_module, parent_module, dependency_graph):
-                        mainify_import = True
-
-                if mainify_import:
-                    import_code.append(f"from {parent_module.__name__} import {imported_class.__name__} as {class_name}")
-                    skip_modules.add(parent_module)
-                else:
-                    _mainify_dependencies(parent_module)
-            
-            if parent_module in mainified_modules:
+            if _mainify_dependencies(imported_module):
                 source_code = decompose_references(source_code, class_name, imported_class.__name__)
+            else: # Import in __main__
+                import_code.append(f"from {parent_module.__name__} import {imported_class.__name__} as {class_name}")
             
         source_code = '\n'.join(import_code) + f"\n{source_code}"
         executable_code = compile(source_code, "<string>", "exec")
         exec(executable_code, __main__.__dict__)
+        return True
     
     _mainify_dependencies(module)
+
+    # Mainify nested (undefined) attributes
+    for name, attr in obj.__dict__.items():
+        if name[0] == '_': continue # Skips private fields
+        mainify_dependencies(attr, dependency_graph=dependency_graph, skip_modules=skip_modules)
+
+        if isinstance(attr, dict): # Mainify keys and values
+            for key, value in attr.items():
+                mainify_dependencies(key, dependency_graph=dependency_graph, skip_modules=skip_modules)
+                mainify_dependencies(value, dependency_graph=dependency_graph, skip_modules=skip_modules)
+        
+        if isinstance(attr, Iterable):
+            for nested_obj in attr:
+                mainify_dependencies(nested_obj, dependency_graph=dependency_graph, skip_modules=skip_modules)
 
 if __name__ == "__main__":
     pass
