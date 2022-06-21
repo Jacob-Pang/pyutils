@@ -212,18 +212,17 @@ def mainify_dependencies(obj: (types.ModuleType | types.FunctionType | object),
                 source_code = decompose_references(source_code, class_name, imported_class.__name__)
             else: # Import in __main__
                 import_code.append(f"from {parent_module.__name__} import {imported_class.__name__} as {class_name}")
-            
-        source_code = '\n'.join(import_code) + f"\n{source_code}"
+        
         try:
+            source_code = '\n'.join(import_code) + f"\n{source_code}"
             executable_code = compile(source_code, "<string>", "exec")
             exec(executable_code, __main__.__dict__)
-        except:
-            print(module.__name__)
+            return True
+        except Exception as e:
             print(inspect.getsource(module))
-            print("cleaned:")
+            print("********************************************************************")
             print(source_code)
-            raise Exception()
-        return True
+            raise e
     
     _mainify_dependencies(module)
 
