@@ -203,7 +203,7 @@ def mainify_dependencies(obj: (types.ModuleType | types.FunctionType | object),
                 
         for imported_function, (function_name, parent_module) in dependency_graph.get(module) \
             .imported_functions.items():
-            if _mainify_dependencies(imported_module):
+            if _mainify_dependencies(parent_module):
                 source_code = decompose_references(source_code, function_name, imported_function.__name__)
             else: # Import in __main__
                 import_code_chunks.append(f"from {parent_module.__name__} import {imported_function.__name__} " + \
@@ -211,7 +211,7 @@ def mainify_dependencies(obj: (types.ModuleType | types.FunctionType | object),
         
         for imported_class, (class_name, parent_module) in dependency_graph.get(module) \
             .imported_classes.items():
-            if _mainify_dependencies(imported_module):
+            if _mainify_dependencies(parent_module):
                 source_code = decompose_references(source_code, class_name, imported_class.__name__)
             else: # Import in __main__
                 import_code_chunks.append(f"from {parent_module.__name__} import {imported_class.__name__} as {class_name}")
