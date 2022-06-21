@@ -214,8 +214,12 @@ def mainify_dependencies(obj: (types.ModuleType | types.FunctionType | object),
                 import_code.append(f"from {parent_module.__name__} import {imported_class.__name__} as {class_name}")
             
         source_code = '\n'.join(import_code) + f"\n{source_code}"
-        executable_code = compile(source_code, "<string>", "exec")
-        exec(executable_code, __main__.__dict__)
+        try:
+            executable_code = compile(source_code, "<string>", "exec")
+            exec(executable_code, __main__.__dict__)
+        except:
+            print(source_code)
+            raise Exception()
         return True
     
     _mainify_dependencies(module)

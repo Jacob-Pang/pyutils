@@ -1,4 +1,5 @@
 import dill
+import pyutils
 
 from github import AuthenticatedUser, Github, Repository
 from pyutils.database.github.github_artifact import GitHubDillFile
@@ -80,7 +81,7 @@ class GitHubDataBase (GitHubDataNode, DataBase):
         self.repository = None
 
     def save_database_memory(self, *args, access_token: str = None, commit_message: str = '',
-        save_child_nodes: bool = True, **kwargs) -> None:
+        save_child_nodes: bool = True, skip_modules: set = set(), **kwargs) -> None:
         """
         Notes:
             method removes cached authenticated github objects before saving. User has to
@@ -90,13 +91,15 @@ class GitHubDataBase (GitHubDataNode, DataBase):
             if isinstance(child_node, GitHubDataBase):
                 if save_child_nodes:
                     child_node.save_database_memory(*args, access_token=access_token,
-                            commit_message=commit_message, save_child_nodes=True, **kwargs)
+                            commit_message=commit_message, save_child_nodes=True,
+                            skip_modules=skip_modules, **kwargs)
                 
                 child_node.destroy_authentication_cache()
 
         authenticated_repo = self.get_authenticated_repo(access_token)
         self.destroy_authentication_cache()
 
+        skip_modules.add(pyutils)
         DataBase.save_database_memory(self, *args, authenticated_repo=authenticated_repo,
                 access_token=access_token, commit_message=commit_message, **kwargs)
 
