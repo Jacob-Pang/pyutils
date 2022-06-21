@@ -1,18 +1,19 @@
-from github import AuthenticatedUser, Github, Repository
+import dill
 
-from pyutils.database.github.github_artifact import GitHubPickleFile
+from github import AuthenticatedUser, Github, Repository
+from pyutils.database.github.github_artifact import GitHubDillFile
 from pyutils.database.github.github_data_node import GitHubDataNode
 from pyutils.database.data_node import DataNode
 from pyutils.database.database import DataBase
 from pyutils.github_ops.common import get_authenticated_repository, get_repository, github_relative_path
-from pyutils.github_ops.read_ops import read_pickle
+from pyutils.github_ops.read_ops import read_file
 
 class GitHubDataBase (GitHubDataNode, DataBase):
     @staticmethod
     def restore_database(data_node_id: str, user_name: str, repository_name: str,
         connection_dpath: str = '', branch: str = "main") -> GitHubDataNode:
         from_remote_file_path = github_relative_path(f"{connection_dpath}/{DataBase.memory_file_name(data_node_id)}")
-        return read_pickle(user_name, repository_name, from_remote_file_path, branch)
+        return dill.loads(read_file(user_name, repository_name, from_remote_file_path, branch))
 
     def __init__(self, data_node_id: str, user_name: str, repository_name: str,
         branch: str = "main", authenticated_user: AuthenticatedUser = None,
@@ -32,7 +33,7 @@ class GitHubDataBase (GitHubDataNode, DataBase):
                 **field_kwargs)
 
     def add_memory_node(self) -> None:
-        memory_node = GitHubPickleFile(DataBase.memory_file_name(self.data_node_id),
+        memory_node = GitHubDillFile(DataBase.memory_file_name(self.data_node_id),
                 description="persistent database memory structure")
 
         self.add_connected_child_node(memory_node)
