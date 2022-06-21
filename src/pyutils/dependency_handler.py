@@ -181,29 +181,32 @@ def mainify_dependencies(obj: (types.ModuleType | types.FunctionType | object),
             
             return # No subsequent execution required
 
-        import_code, source_code = [], []
+        source_code = inspect.getsource(module)
+        import_code_chunks, source_code_chunks = [], []
 
-        # Extract source code without imports from module
+        # Extract source code without imports from module while maintaining definition sequence
         for defined_function in dependency_graph.get(module).defined_functions:
-            source_code.append(inspect.getsource(defined_function))
+            function_definition = inspect.getsource(defined_function)
+            source_code_chunks.append((source_code.find(function_definition), function_definition))
 
         for defined_classes in dependency_graph.get(module).defined_classes:
-            source_code.append(inspect.getsource(defined_classes))
+            class_definition = inspect.getsource(defined_classes)
+            source_code_chunks.append((source_code.find(class_definition), class_definition))
 
-        source_code = '\n'.join(source_code)
+        source_code = '\n'.join(sorted(source_code_chunks))
 
         for imported_module, module_name in dependency_graph.get(module).imported_modules.items():
             if _mainify_dependencies(imported_module):
                 source_code = source_code.replace(f"{module_name}.", '')
             else: # Import in __main__
-                import_code.append(f"import {imported_module.__name__} as {module_name}\n")
+                import_code_chunks.append(f"import {imported_module.__name__} as {module_name}\n")
                 
         for imported_function, (function_name, parent_module) in dependency_graph.get(module) \
             .imported_functions.items():
             if _mainify_dependencies(imported_module):
                 source_code = decompose_references(source_code, function_name, imported_function.__name__)
             else: # Import in __main__
-                import_code.append(f"from {parent_module.__name__} import {imported_function.__name__} " + \
+                import_code_chunks.append(f"from {parent_module.__name__} import {imported_function.__name__} " + \
                         f"as {function_name}")
         
         for imported_class, (class_name, parent_module) in dependency_graph.get(module) \
@@ -211,10 +214,10 @@ def mainify_dependencies(obj: (types.ModuleType | types.FunctionType | object),
             if _mainify_dependencies(imported_module):
                 source_code = decompose_references(source_code, class_name, imported_class.__name__)
             else: # Import in __main__
-                import_code.append(f"from {parent_module.__name__} import {imported_class.__name__} as {class_name}")
+                import_code_chunks.append(f"from {parent_module.__name__} import {imported_class.__name__} as {class_name}")
         
         try:
-            source_code = '\n'.join(import_code) + f"\n{source_code}"
+            source_code = '\n'.join(import_code_chunks) + f"\n{source_code}"
             executable_code = compile(source_code, "<string>", "exec")
             exec(executable_code, __main__.__dict__)
             return True
