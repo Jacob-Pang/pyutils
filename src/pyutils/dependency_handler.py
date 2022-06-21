@@ -193,7 +193,7 @@ def mainify_dependencies(obj: (types.ModuleType | types.FunctionType | object),
             class_definition = inspect.getsource(defined_classes)
             source_code_chunks.append((source_code.find(class_definition), class_definition))
 
-        source_code = '\n'.join(sorted(source_code_chunks))
+        source_code = '\n'.join([code_chunk for _, code_chunk in sorted(source_code_chunks)])
 
         for imported_module, module_name in dependency_graph.get(module).imported_modules.items():
             if _mainify_dependencies(imported_module):
@@ -222,6 +222,8 @@ def mainify_dependencies(obj: (types.ModuleType | types.FunctionType | object),
             exec(executable_code, __main__.__dict__)
             return True
         except Exception as e:
+            print(skip_modules)
+            print("*******************************************************************")
             print(inspect.getsource(module))
             print("********************************************************************")
             print(source_code)
