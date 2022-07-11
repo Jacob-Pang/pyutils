@@ -259,11 +259,13 @@ class DependencyGraphNode:
                     source_code_chunks.append(dependency_source_code)
             
             if module_import in unpacked_dependencies: # Source was codified successfully.
-                print(dependency_import)
-                source_code = remove_module_references(source_code, asname) \
+                try:
+                    source_code = remove_module_references(source_code, asname) \
                         if inspect.ismodule(dependency_import) else \
                         decompose_references(source_code, asname, dependency_import.__name__)
-
+                except:
+                    print(dependency_import)
+                    raise Exception
                 source_code = source_code.replace(source_code_chunk, '')
         
         # Append comment header
