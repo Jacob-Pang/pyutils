@@ -17,6 +17,6 @@ setup(
     ],
     include_package_data=True,
     install_requires=[
-        "dill", "pandas", "PyGithub", "requests"
+        "cloudpickle", "pandas", "PyGithub", "requests"
     ]
 )
