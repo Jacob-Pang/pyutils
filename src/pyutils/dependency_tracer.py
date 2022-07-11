@@ -226,18 +226,11 @@ class DependencyGraphNode:
                     ast.With, ast.While)): # Container descendant nodes
 
                     for child_node in ast.iter_child_nodes(node):
+                        # Ignore exceptions for non-guaranteed execution
                         trace_dependency_imports(child_node, ignore_uninstalled=ignore_uninstalled or
-                                isinstance(node, (ast.Try, ast.If)))
+                                isinstance(node, (ast.ClassDef, ast.FunctionDef, ast.Try, ast.If)))
             except Exception as parse_exception:
-                if not ignore_uninstalled:
-                    print("=============================================================================")
-                    print(f"Dependency tracing encountered error from {self.module.__name__}")
-                    print("=============================================================================")
-
-                    with open(f"{self.module.__name__}.txt", "w", encoding="utf-8") as f:
-                        f.write(self.reduced_source_code)
-
-                    raise parse_exception
+                if not ignore_uninstalled: raise parse_exception
 
         for child_node in ast.iter_child_nodes(ast.parse(self.reduced_source_code)):
             trace_dependency_imports(child_node, ignore_uninstalled)
