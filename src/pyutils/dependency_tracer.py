@@ -130,6 +130,8 @@ class DependencyGraph:
         if terminal_module in self.terminal_modules: return
         self.terminal_modules.add(terminal_module)
 
+        print("get", terminal_module.__name__)
+
         for _, imported_module in inspect.getmembers(terminal_module, inspect.ismodule):
             self.set_terminal_module(imported_module)
         
