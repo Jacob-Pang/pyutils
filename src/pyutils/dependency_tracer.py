@@ -120,12 +120,8 @@ class DependencyGraph:
         """ Sets terminal status on the module, recursively imported dependencies and
         defined modules within the parent package.
         """
-        print("set", terminal_module.__name__)
-
         if terminal_module in self.terminal_modules: return
         self.terminal_modules.add(terminal_module)
-
-        print("get", terminal_module.__name__)
 
         try: # Ignore exceptions raised from inspect
             for _, imported_module in inspect.getmembers(terminal_module, inspect.ismodule):
@@ -134,7 +130,6 @@ class DependencyGraph:
             pass
 
         package_name = terminal_module.__name__.split('.')[0]
-        print("import", terminal_module.__name__, "->", package_name)
         package = importlib.import_module(package_name)
 
         if package in self.terminal_modules: return
@@ -264,6 +259,7 @@ class DependencyGraphNode:
                     source_code_chunks.append(dependency_source_code)
             
             if module_import in unpacked_dependencies: # Source was codified successfully.
+                print(dependency_import)
                 source_code = remove_module_references(source_code, asname) \
                         if inspect.ismodule(dependency_import) else \
                         decompose_references(source_code, asname, dependency_import.__name__)
