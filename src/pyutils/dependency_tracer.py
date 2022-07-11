@@ -265,7 +265,7 @@ class DependencyGraphNode:
                         decompose_references(source_code, asname, dependency_import.__name__)
                 except:
                     print(dependency_import)
-                    raise Exception
+                    raise Exception(dependency_import, type(dependency_import))
                 source_code = source_code.replace(source_code_chunk, '')
         
         # Append comment header
