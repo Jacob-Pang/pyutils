@@ -162,7 +162,7 @@ class DependencyGraphNode:
         current_package_name = self.module.__name__ if os.path.basename(self.module.__file__) == "__init__.py" \
                 else '.'.join(self.module.__name__.split('.')[:-1])
 
-        def parse_dependency_imports(node: ast.AST, ignore_uninstalled: bool = False) -> None:
+        def trace_dependency_imports(node: ast.AST, ignore_uninstalled: bool = False) -> None:
             try: # Wrap parsing process
                 if isinstance(node, ast.ImportFrom):
                     source_code_chunk = ast.get_source_segment(self.reduced_source_code, node)
@@ -226,13 +226,17 @@ class DependencyGraphNode:
                     ast.With, ast.While)): # Container descendant nodes
 
                     for child_node in ast.iter_child_nodes(node):
-                        parse_dependency_imports(child_node, ignore_uninstalled=ignore_uninstalled or
+                        trace_dependency_imports(child_node, ignore_uninstalled=ignore_uninstalled or
                                 isinstance(node, (ast.Try, ast.If)))
             except Exception as parse_exception:
-                if not ignore_uninstalled: raise parse_exception
+                if not ignore_uninstalled:
+                    print("=============================================================================")
+                    print(f"Dependency tracing encountered error from {self.module.__name__}")
+                    print("=============================================================================")
+                    raise parse_exception
 
         for child_node in ast.iter_child_nodes(ast.parse(self.reduced_source_code)):
-            parse_dependency_imports(child_node, ignore_uninstalled)
+            trace_dependency_imports(child_node, ignore_uninstalled)
 
     def get_source_code(self, unpacked_dependencies: set = set()) -> (str | None):
         if self.module in self.dependency_graph.terminal_modules or builtin_or_stdlib(self.module):
@@ -288,7 +292,7 @@ def mainify_dependencies(obj: (types.ModuleType | types.FunctionType | object),
     if module in unpacked_dependencies: return
 
     node = DependencyGraphNode(module, dependency_graph)
-    node.branch_dependencies()
+    node.branch_dependencies(ignore_uninstalled=True)
     executable_code = compile(node.get_source_code(unpacked_dependencies), "<string>", "exec")
     exec(executable_code, __main__.__dict__)
     unpacked_dependencies.add(module)
