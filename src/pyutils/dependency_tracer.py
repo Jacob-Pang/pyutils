@@ -233,6 +233,10 @@ class DependencyGraphNode:
                     print("=============================================================================")
                     print(f"Dependency tracing encountered error from {self.module.__name__}")
                     print("=============================================================================")
+
+                    with open(f"{self.module.__name__}.txt", "w", encoding="utf-8") as f:
+                        f.write(self.reduced_source_code)
+
                     raise parse_exception
 
         for child_node in ast.iter_child_nodes(ast.parse(self.reduced_source_code)):
