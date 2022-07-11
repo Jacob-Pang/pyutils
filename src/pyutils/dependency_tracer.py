@@ -29,12 +29,7 @@ def unpack_packages(package: types.ModuleType, unpacked_modules: set = set(), ig
     unpacked_modules.add(package)
 
     if hasattr(package, "__path__"):
-        try: # Pkgutil may raise exceptions
-            defined_modules = pkgutil.iter_modules(package.__path__)
-        except:
-            return unpacked_modules
-
-        for _, module_name, is_package in defined_modules:
+        for _, module_name, is_package in pkgutil.iter_modules(package.__path__):
             if module_name == "__main__":
                 continue
 
@@ -132,9 +127,12 @@ class DependencyGraph:
 
         print("get", terminal_module.__name__)
 
-        for _, imported_module in inspect.getmembers(terminal_module, inspect.ismodule):
-            self.set_terminal_module(imported_module)
-        
+        try: # Ignore exceptions raised from inspect
+            for _, imported_module in inspect.getmembers(terminal_module, inspect.ismodule):
+                self.set_terminal_module(imported_module)
+        except:
+            pass
+
         package_name = terminal_module.__name__.split('.')[0]
         print("import", terminal_module.__name__, "->", package_name)
         package = importlib.import_module(package_name)
