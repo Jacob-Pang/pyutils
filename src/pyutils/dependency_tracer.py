@@ -26,7 +26,6 @@ def builtin_or_stdlib(reference: (types.ModuleType | types.FunctionType | type))
 def unpack_packages(package: types.ModuleType, unpacked_modules: set = set(), ignore_uninstalled: bool = True) -> set:
     """ Unpacks only defined modules in <package>: does not check for module imports.
     """
-    print("start", package)
     unpacked_modules.add(package)
 
     if hasattr(package, "__path__"):
@@ -50,7 +49,6 @@ def unpack_packages(package: types.ModuleType, unpacked_modules: set = set(), ig
             if is_package: # Recursively unpack modules
                 unpack_packages(unpacked_module, unpacked_modules, ignore_uninstalled)
 
-    print("end", package)
     return unpacked_modules
 
 def get_reduced_source_code(module: types.ModuleType) -> str:
@@ -127,6 +125,8 @@ class DependencyGraph:
         """ Sets terminal status on the module, recursively imported dependencies and
         defined modules within the parent package.
         """
+        print("set", terminal_module.__name__)
+
         if terminal_module in self.terminal_modules: return
         self.terminal_modules.add(terminal_module)
 
@@ -134,6 +134,7 @@ class DependencyGraph:
             self.set_terminal_module(imported_module)
         
         package_name = terminal_module.__name__.split('.')[0]
+        print("import", terminal_module.__name__, "->", package_name)
         package = importlib.import_module(package_name)
 
         if package in self.terminal_modules: return
