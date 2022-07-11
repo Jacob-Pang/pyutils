@@ -127,8 +127,10 @@ class DependencyGraph:
             self.set_terminal_module(imported_module)
         
         package_name = terminal_module.__name__.split('.')[0]
+
+        print("pre-import")
         package = importlib.import_module(package_name)
-        print(".")
+        print("post-import")
 
         if package in self.terminal_modules: return
         self.terminal_modules.add(package)
@@ -136,7 +138,7 @@ class DependencyGraph:
         for defined_module in unpack_packages(package, ignore_uninstalled=True):
             self.set_terminal_module(defined_module)
 
-        print("..")
+        print("post-unpack")
 
 class DependencyGraphNode:
     def __init__(self, module: types.ModuleType, dependency_graph: DependencyGraph = DependencyGraph()) -> None:
