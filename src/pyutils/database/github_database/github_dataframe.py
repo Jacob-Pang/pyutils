@@ -5,8 +5,8 @@ import time
 import pandas as pd
 
 from github import Repository
-from pyutils.database.github.github_artifact import GitHubArtifact
 from pyutils.database.dataframe import DataFrame, ParquetDataFrame
+from pyutils.database.github_database.github_artifact import GitHubArtifact
 from pyutils.github_ops.common import github_relative_path, repository_walk
 from pyutils.github_ops.write_ops import delete_file, push_directory, write_files
 from pyutils.github_ops.read_ops import pull_directory, read_csv_to_pandas, read_parquet_to_pandas

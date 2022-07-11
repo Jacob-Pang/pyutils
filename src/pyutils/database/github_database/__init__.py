@@ -4,8 +4,8 @@ import pyutils
 from github import AuthenticatedUser, Github, Repository
 from pyutils.database import DataBase
 from pyutils.database.data_node import DataNode
-from pyutils.database.github.github_artifact import GitHubCloudPickleFile
-from pyutils.database.github.github_data_node import GitHubDataNode
+from pyutils.database.github_database.github_artifact import GitHubCloudPickleFile
+from pyutils.database.github_database.github_data_node import GitHubDataNode
 from pyutils.github_ops.common import get_authenticated_repository, get_repository, github_relative_path
 from pyutils.github_ops.read_ops import read_file
 

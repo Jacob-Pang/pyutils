@@ -5,8 +5,8 @@ import pyutils
 from github import Repository
 from pyutils.dependency_tracer import DependencyGraph
 from pyutils.dependency_tracer import mainify_dependencies
-from pyutils.database.github.github_data_node import GitHubDataNode
 from pyutils.database.artifact import Artifact, CloudPickleFile, PickleFile
+from pyutils.database.github_database.github_data_node import GitHubDataNode
 from pyutils.github_ops.write_ops import write_files
 from pyutils.github_ops.read_ops import read_file, read_pickle
 
