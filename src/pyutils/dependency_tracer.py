@@ -243,7 +243,6 @@ class DependencyGraphNode:
             return None
 
         source_code = self.reduced_source_code
-
         unpacked_dependencies.add(self.module)
         source_code_chunks = []
 
@@ -260,12 +259,11 @@ class DependencyGraphNode:
                     source_code_chunks.append(dependency_source_code)
             
             if module_import in unpacked_dependencies: # Source was codified successfully.
-                pre = source_code
-
-                source_code = remove_module_references(source_code, asname) \
+                try:
+                    source_code = remove_module_references(source_code, asname) \
                         if inspect.ismodule(dependency_import) else \
                         decompose_references(source_code, asname, dependency_import.__name__)
-
+                except: print(dependency_import, asname, source_code_chunk)
                 source_code = source_code.replace(source_code_chunk, '')
         
         # Append comment header
@@ -292,7 +290,7 @@ def mainify_dependencies(obj: (types.ModuleType | types.FunctionType | object),
     if module in unpacked_dependencies: return
 
     node = DependencyGraphNode(module, dependency_graph)
-    node.branch_dependencies(ignore_uninstalled=True)
+    node.branch_dependencies()
     executable_code = compile(node.get_source_code(unpacked_dependencies), "<string>", "exec")
     exec(executable_code, __main__.__dict__)
     unpacked_dependencies.add(module)
