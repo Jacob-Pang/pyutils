@@ -1,10 +1,12 @@
-import dill
+import cloudpickle
 import pickle
+import pyutils
 
 from github import Repository
-from pyutils.dependency_handler import mainify_dependencies
+from pyutils.dependency_tracer import DependencyGraph
+from pyutils.dependency_tracer import mainify_dependencies
 from pyutils.database.github.github_data_node import GitHubDataNode
-from pyutils.database.artifact import Artifact, DillFile, PickleFile
+from pyutils.database.artifact import Artifact, CloudPickleFile, PickleFile
 from pyutils.github_ops.write_ops import write_files
 from pyutils.github_ops.read_ops import read_file, read_pickle
 
@@ -38,20 +40,21 @@ class GitHubPickleFile (GitHubArtifact, PickleFile):
         return read_pickle(self.get_user_name(), self.get_repo_name(), path,
                 self.get_branch())
 
-class GitHubDillFile (GitHubArtifact, DillFile):
-    def save_data_to_path(self, artifact_data: any, path: str, *args,
-        authenticated_repo: Repository = None, access_token: str = None,
-        commit_message: str = '', skip_modules: set = set(), **kwargs) -> None:
+class GitHubCloudPickleFile (GitHubArtifact, CloudPickleFile):
+    def save_data_to_path(self, artifact_data: any, path: str, *args, authenticated_repo: Repository = None,
+        access_token: str = None, commit_message: str = '', terminal_modules: set = set(), **kwargs) -> None:
 
-        mainify_dependencies(artifact_data, skip_modules=skip_modules)
-        file_content = dill.dumps(artifact_data)
+        terminal_modules.add(pyutils)
+        dependency_graph = DependencyGraph(terminal_modules)
+        mainify_dependencies(self, dependency_graph)
+        file_content = cloudpickle.dumps(artifact_data)
 
         GitHubArtifact.save_data_to_path(self, file_content, path, *args,
                 authenticated_repo=authenticated_repo, access_token=access_token,
                 commit_message=commit_message, **kwargs)
 
     def read_data_from_path(self, path: str, *args, **kwargs) -> any:
-        return dill.loads(read_file(self.get_user_name(), self.get_repo_name(), path,
+        return cloudpickle.loads(read_file(self.get_user_name(), self.get_repo_name(), path,
                 self.get_branch()))
 
 if __name__ == "__main__":

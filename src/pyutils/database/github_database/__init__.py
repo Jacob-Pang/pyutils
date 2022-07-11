@@ -1,11 +1,11 @@
-import dill
+import cloudpickle
 import pyutils
 
 from github import AuthenticatedUser, Github, Repository
-from pyutils.database.github.github_artifact import GitHubDillFile
-from pyutils.database.github.github_data_node import GitHubDataNode
+from pyutils.database import DataBase
 from pyutils.database.data_node import DataNode
-from pyutils.database.database import DataBase
+from pyutils.database.github.github_artifact import GitHubCloudPickleFile
+from pyutils.database.github.github_data_node import GitHubDataNode
 from pyutils.github_ops.common import get_authenticated_repository, get_repository, github_relative_path
 from pyutils.github_ops.read_ops import read_file
 
@@ -14,7 +14,7 @@ class GitHubDataBase (GitHubDataNode, DataBase):
     def restore_database(data_node_id: str, user_name: str, repository_name: str,
         connection_dpath: str = '', branch: str = "main") -> GitHubDataNode:
         from_remote_file_path = github_relative_path(f"{connection_dpath}/{DataBase.memory_file_name(data_node_id)}")
-        return dill.loads(read_file(user_name, repository_name, from_remote_file_path, branch))
+        return cloudpickle.loads(read_file(user_name, repository_name, from_remote_file_path, branch))
 
     def __init__(self, data_node_id: str, user_name: str, repository_name: str,
         branch: str = "main", authenticated_user: AuthenticatedUser = None,
@@ -34,7 +34,7 @@ class GitHubDataBase (GitHubDataNode, DataBase):
                 **field_kwargs)
 
     def add_memory_node(self) -> None:
-        memory_node = GitHubDillFile(DataBase.memory_file_name(self.data_node_id),
+        memory_node = GitHubCloudPickleFile(DataBase.memory_file_name(self.data_node_id),
                 description="persistent database memory structure")
 
         self.add_connected_child_node(memory_node)
@@ -81,7 +81,7 @@ class GitHubDataBase (GitHubDataNode, DataBase):
         self.repository = None
 
     def save_database_memory(self, *args, access_token: str = None, commit_message: str = '',
-        save_child_nodes: bool = True, skip_modules: set = set(), **kwargs) -> None:
+        save_child_nodes: bool = True, terminal_modules: set = set(), **kwargs) -> None:
         """
         Notes:
             method removes cached authenticated github objects before saving. User has to
@@ -92,16 +92,17 @@ class GitHubDataBase (GitHubDataNode, DataBase):
                 if save_child_nodes:
                     child_node.save_database_memory(*args, access_token=access_token,
                             commit_message=commit_message, save_child_nodes=True,
-                            skip_modules=skip_modules, **kwargs)
+                            terminal_modules=terminal_modules, **kwargs)
                 
                 child_node.destroy_authentication_cache()
 
         authenticated_repo = self.get_authenticated_repo(access_token)
         self.destroy_authentication_cache()
 
-        skip_modules.add(pyutils)
+        terminal_modules.add(pyutils)
         DataBase.save_database_memory(self, *args, authenticated_repo=authenticated_repo,
-                access_token=access_token, commit_message=commit_message, **kwargs)
+                access_token=access_token, commit_message=commit_message,
+                terminal_modules=terminal_modules, **kwargs)
 
     def autosave_database_memory(self) -> None:
         pass # Does not perform auto save

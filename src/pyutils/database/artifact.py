@@ -1,10 +1,12 @@
-import dill
+import cloudpickle
 import os
 import pickle
+import pyutils
 import time
 
 from pyutils.database.data_node import DataNode
-from pyutils.dependency_handler import mainify_dependencies
+from pyutils.dependency_tracer import DependencyGraph
+from pyutils.dependency_tracer import mainify_dependencies
 
 class Artifact (DataNode):
     def make_connection_dpath(self) -> None:
@@ -46,16 +48,18 @@ class PickleFile (Artifact):
         with open(path, 'rb') as data_file:
             return pickle.load(data_file)
 
-class DillFile (Artifact):
-    def save_data_to_path(self, artifact_data: any, path: str, *args, skip_modules: set = set(), **kwargs) -> None:
-        mainify_dependencies(artifact_data, skip_modules=skip_modules)
-        
+class CloudPickleFile (Artifact):
+    def save_data_to_path(self, artifact_data: any, path: str, *args, terminal_modules: set = set(), **kwargs) -> None:
+        terminal_modules.add(pyutils)
+        dependency_graph = DependencyGraph(terminal_modules)
+        mainify_dependencies(self, dependency_graph)
+
         with open(path, 'wb') as data_file:
-            dill.dump(artifact_data, data_file, protocol=pickle.HIGHEST_PROTOCOL)
+            cloudpickle.dump(artifact_data, data_file, protocol=pickle.HIGHEST_PROTOCOL)
 
     def read_data_from_path(self, path: str, *args, **kwargs) -> any:
         with open(path, 'rb') as data_file:
-            return dill.load(data_file)
+            return cloudpickle.load(data_file)
 
 if __name__ == "__main__":
     pass
