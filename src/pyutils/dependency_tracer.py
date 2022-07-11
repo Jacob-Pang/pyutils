@@ -26,6 +26,7 @@ def builtin_or_stdlib(reference: (types.ModuleType | types.FunctionType | type))
 def unpack_packages(package: types.ModuleType, unpacked_modules: set = set(), ignore_uninstalled: bool = True) -> set:
     """ Unpacks only defined modules in <package>: does not check for module imports.
     """
+    print("start", package)
     unpacked_modules.add(package)
 
     if hasattr(package, "__path__"):
@@ -49,6 +50,7 @@ def unpack_packages(package: types.ModuleType, unpacked_modules: set = set(), ig
             if is_package: # Recursively unpack modules
                 unpack_packages(unpacked_module, unpacked_modules, ignore_uninstalled)
 
+    print("end", package)
     return unpacked_modules
 
 def get_reduced_source_code(module: types.ModuleType) -> str:
