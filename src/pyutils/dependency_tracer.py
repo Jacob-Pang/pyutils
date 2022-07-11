@@ -140,8 +140,6 @@ class DependencyGraph:
         for defined_module in unpack_packages(package, ignore_uninstalled=True):
             self.set_terminal_module(defined_module)
 
-        print("post-unpack")
-
 class DependencyGraphNode:
     def __init__(self, module: types.ModuleType, dependency_graph: DependencyGraph = DependencyGraph()) -> None:
         # Set connection to graph
@@ -263,11 +261,10 @@ class DependencyGraphNode:
                     source_code_chunks.append(dependency_source_code)
             
             if module_import in unpacked_dependencies: # Source was codified successfully.
-                try:
-                    source_code = remove_module_references(source_code, asname) \
+                source_code = remove_module_references(source_code, asname) \
                         if inspect.ismodule(dependency_import) else \
                         decompose_references(source_code, asname, dependency_import.__name__)
-                except: print(dependency_import, asname, source_code_chunk)
+
                 source_code = source_code.replace(source_code_chunk, '')
         
         # Append comment header
