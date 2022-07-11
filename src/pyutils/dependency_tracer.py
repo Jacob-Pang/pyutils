@@ -186,6 +186,9 @@ class DependencyGraphNode:
                     if hasattr(parent_module, reference.name):
                         self.dependency_imports[asname] = (getattr(parent_module, reference.name),
                                 source_code_chunk)
+
+                        assert inspect.ismodule(getattr(parent_module, reference.name)) or \
+                            inspect.isclass(getattr(parent_module, reference.name)), f"{self.module.__name__} -> {reference.name}"
                         
                         if parent_module not in self.dependency_graph.dependency_nodes:
                             DependencyGraphNode(parent_module, self.dependency_graph) \
@@ -264,8 +267,8 @@ class DependencyGraphNode:
                         if inspect.ismodule(dependency_import) else \
                         decompose_references(source_code, asname, dependency_import.__name__)
                 except:
-                    print(dependency_import)
                     raise Exception(dependency_import, type(dependency_import))
+
                 source_code = source_code.replace(source_code_chunk, '')
         
         # Append comment header
