@@ -123,18 +123,20 @@ class DependencyGraph:
         if terminal_module in self.terminal_modules: return
         self.terminal_modules.add(terminal_module)
 
-        print(f"called from {terminal_module}")
         for _, imported_module in inspect.getmembers(terminal_module, inspect.ismodule):
             self.set_terminal_module(imported_module)
         
         package_name = terminal_module.__name__.split('.')[0]
         package = importlib.import_module(package_name)
+        print(".")
 
         if package in self.terminal_modules: return
         self.terminal_modules.add(package)
 
         for defined_module in unpack_packages(package, ignore_uninstalled=True):
             self.set_terminal_module(defined_module)
+
+        print("..")
 
 class DependencyGraphNode:
     def __init__(self, module: types.ModuleType, dependency_graph: DependencyGraph = DependencyGraph()) -> None:
@@ -156,7 +158,6 @@ class DependencyGraphNode:
         try: # Does not support compiled module code
             self.reduced_source_code = get_reduced_source_code(self.module)
         except:
-            print(f"Encountered error {self.module.__name__}")
             self.reduced_source_code = None
             self.dependency_graph.set_terminal_module(self.module)
             return
