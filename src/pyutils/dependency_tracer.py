@@ -187,7 +187,7 @@ class DependencyGraphNode:
                         self.dependency_imports[asname] = (getattr(parent_module, reference.name),
                                 source_code_chunk)
 
-                        assert inspect.ismodule(getattr(parent_module, reference.name)) or \
+                        assert inspect.isfunction(getattr(parent_module, reference.name)) or \
                             inspect.isclass(getattr(parent_module, reference.name)), \
                             f"{self.module.__name__} -> {reference.name}, {type(getattr(parent_module, reference.name))}"
                         
