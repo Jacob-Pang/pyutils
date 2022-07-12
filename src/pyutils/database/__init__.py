@@ -30,7 +30,7 @@ class DataBase (DataNode):
 
         self.add_connected_child_node(memory_node)
 
-    def save_database_memory(self, *args, dependency_graph: DependencyGraph = DependencyGraph(pyutils),
+    def save_database_memory(self, *args, dependency_graph: DependencyGraph = DependencyGraph(),
         **kwargs) -> None:
         self.get_child_node(DataBase.memory_file_name(self.data_node_id)).save_data(
                 self, *args, dependency_graph=dependency_graph, **kwargs)

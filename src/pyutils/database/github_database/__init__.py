@@ -82,7 +82,7 @@ class GitHubDataBase (GitHubDataNode, DataBase):
         self.repository = None
 
     def save_database_memory(self, *args, access_token: str = None, commit_message: str = '',
-        save_child_nodes: bool = True, dependency_graph: DependencyGraph = DependencyGraph(pyutils),
+        save_child_nodes: bool = True, dependency_graph: DependencyGraph = DependencyGraph(),
         **kwargs) -> None:
         """
         Notes:

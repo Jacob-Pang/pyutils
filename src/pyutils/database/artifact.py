@@ -48,9 +48,10 @@ class PickleFile (Artifact):
 
 class CloudPickleFile (Artifact):
     def save_data_to_path(self, artifact_data: any, path: str, *args, dependency_graph: DependencyGraph
-        = DependencyGraph(pyutils), **kwargs) -> None:
+        = DependencyGraph(), **kwargs) -> None:
 
         with RedirectIOStream(stdout_dest=os.devnull, stderr_dest=os.devnull):
+            dependency_graph.set_terminal_module(pyutils)
             mainify_dependencies(self, dependency_graph)
 
         with open(path, 'wb') as data_file:

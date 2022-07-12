@@ -39,10 +39,11 @@ class GitHubPickleFile (GitHubArtifact, PickleFile):
 
 class GitHubCloudPickleFile (GitHubArtifact, CloudPickleFile):
     def save_data_to_path(self, artifact_data: any, path: str, *args, authenticated_repo: Repository = None,
-        access_token: str = None, commit_message: str = '', dependency_graph: DependencyGraph
-        = DependencyGraph(pyutils), **kwargs) -> None:
+        access_token: str = None, commit_message: str = '', dependency_graph: DependencyGraph = DependencyGraph(),
+        **kwargs) -> None:
 
         with RedirectIOStream(stdout_dest=os.devnull, stderr_dest=os.devnull):
+            dependency_graph.set_terminal_module(pyutils)
             mainify_dependencies(self, dependency_graph)
 
         file_content = cloudpickle.dumps(artifact_data)
