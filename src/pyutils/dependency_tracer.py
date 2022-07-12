@@ -114,7 +114,10 @@ def decompose_references(source_code: str, asname: str, name: str) -> str:
 class DependencyGraph:
     def __init__(self, *terminal_modules: types.ModuleType) -> None:
         self.dependency_nodes = dict()
-        self.terminal_modules = set(terminal_modules)
+        self.terminal_modules = set()
+        
+        for terminal_module in terminal_modules:
+            self.set_terminal_module(terminal_module)
 
     def set_terminal_module(self, terminal_module: types.ModuleType) -> None:
         """ Sets terminal status on the module, recursively imported dependencies and
@@ -259,12 +262,9 @@ class DependencyGraphNode:
                     source_code_chunks.append(dependency_source_code)
             
             if module_import in unpacked_dependencies: # Source was codified successfully.
-                try:
-                    source_code = remove_module_references(source_code, asname) \
-                            if inspect.ismodule(dependency_import) else \
-                            decompose_references(source_code, asname, dependency_import.__name__)
-                except:
-                    raise Exception(module_import.__name__)
+                source_code = remove_module_references(source_code, asname) \
+                        if inspect.ismodule(dependency_import) else \
+                        decompose_references(source_code, asname, dependency_import.__name__)
 
                 source_code = source_code.replace(source_code_chunk, '')
         
