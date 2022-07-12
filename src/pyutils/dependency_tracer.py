@@ -165,8 +165,8 @@ class DependencyGraphNode:
         current_package_name = self.module.__name__ if os.path.basename(self.module.__file__) == "__init__.py" \
                 else '.'.join(self.module.__name__.split('.')[:-1])
 
-        def trace_dependency_imports(node: ast.AST, ignore_uninstalled: bool = False) -> None:
-            try: # Wrap parsing process
+        def trace_dependency_imports(node: ast.AST, ignore_uninstalled: bool = False) -> bool:
+            try:
                 if isinstance(node, ast.ImportFrom):
                     source_code_chunk = ast.get_source_segment(self.reduced_source_code, node)
                     parent_module_name = node.module
@@ -224,13 +224,16 @@ class DependencyGraphNode:
                     ast.With, ast.While)): # Container descendant nodes
 
                     for child_node in ast.iter_child_nodes(node):
-                        # Ignore exceptions for non-guaranteed execution
-                        trace_dependency_imports(child_node, ignore_uninstalled=ignore_uninstalled or
-                                isinstance(node, (ast.ClassDef, ast.FunctionDef, ast.Try, ast.If)))
-            except Exception as parse_exception:
+                        # Ignore exceptions for non-guaranteed execution.
+                        if not trace_dependency_imports(child_node, ignore_uninstalled=ignore_uninstalled or
+                            isinstance(node, (ast.ClassDef, ast.FunctionDef, ast.Try, ast.If))):
+                            break # Premature termination
+            except: # Encountered module exceptions such as uninstalled dependencies.
                 if not ignore_uninstalled:
-                    print(self.module.__name__, "->", source_code_chunk)
-                    raise parse_exception
+                    self.dependency_graph.set_terminal_module(self.module)
+                    return False
+            
+            return True
 
         for child_node in ast.iter_child_nodes(ast.parse(self.reduced_source_code)):
             trace_dependency_imports(child_node, ignore_uninstalled)
