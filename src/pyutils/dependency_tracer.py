@@ -293,9 +293,12 @@ def mainify_dependencies(obj: (types.ModuleType | types.FunctionType | object),
 
     node = DependencyGraphNode(module, dependency_graph)
     node.branch_dependencies()
-    executable_code = compile(node.get_source_code(unpacked_dependencies), "<string>", "exec")
-    exec(executable_code, __main__.__dict__)
+    source_code = node.get_source_code(unpacked_dependencies)
     unpacked_dependencies.add(module)
+
+    if source_code:
+        executable_code = compile(node.get_source_code(unpacked_dependencies), "<string>", "exec")
+        exec(executable_code, __main__.__dict__)
 
     # Mainify nested attributes within collections.
     for name, attr in obj.__dict__.items():
