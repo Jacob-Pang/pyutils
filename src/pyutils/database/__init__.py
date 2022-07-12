@@ -5,6 +5,7 @@ import pyutils
 from collections.abc import Iterable
 from pyutils.database.data_node import DataNode
 from pyutils.database.artifact import CloudPickleFile
+from pyutils.dependency_tracer import DependencyGraph
 
 class DataBase (DataNode):
     @staticmethod
@@ -29,10 +30,10 @@ class DataBase (DataNode):
 
         self.add_connected_child_node(memory_node)
 
-    def save_database_memory(self, *args, terminal_modules: set = set(), **kwargs) -> None:
-        terminal_modules.add(pyutils)
+    def save_database_memory(self, *args, dependency_graph: DependencyGraph = DependencyGraph(pyutils),
+        **kwargs) -> None:
         self.get_child_node(DataBase.memory_file_name(self.data_node_id)).save_data(
-                self, *args, terminal_modules=terminal_modules, **kwargs)
+                self, *args, dependency_graph=dependency_graph, **kwargs)
 
     def autosave_database_memory(self) -> None:
         self.save_database_memory()
@@ -114,16 +115,7 @@ class DataBase (DataNode):
             catalog.append(node_fields)
 
         return pd.DataFrame(catalog, columns=["ID", "category",
-                "description", *lookup_fields])       
-
-    def get_update_tasks(self, *args, **kwargs) -> list:
-        update_tasks = []
-
-        for child_node in self.get_child_nodes(recursive=False):
-            if hasattr(child_node, "get_update_tasks"):
-                update_tasks.extend(child_node.get_update_tasks(*args, **kwargs))
-        
-        return update_tasks
+                "description", *lookup_fields])
         
 if __name__ == "__main__":
     pass

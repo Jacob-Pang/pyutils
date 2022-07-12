@@ -112,9 +112,9 @@ def decompose_references(source_code: str, asname: str, name: str) -> str:
     return source_code
 
 class DependencyGraph:
-    def __init__(self, terminal_modules: set = set()) -> None:
+    def __init__(self, *terminal_modules: types.ModuleType) -> None:
         self.dependency_nodes = dict()
-        self.terminal_modules = terminal_modules
+        self.terminal_modules = set(terminal_modules)
 
     def set_terminal_module(self, terminal_module: types.ModuleType) -> None:
         """ Sets terminal status on the module, recursively imported dependencies and

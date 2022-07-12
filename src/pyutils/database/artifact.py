@@ -7,6 +7,7 @@ import time
 from pyutils.database.data_node import DataNode
 from pyutils.dependency_tracer import DependencyGraph
 from pyutils.dependency_tracer import mainify_dependencies
+from pyutils.wrappers import RedirectIOStream
 
 class Artifact (DataNode):
     def make_connection_dpath(self) -> None:
@@ -33,9 +34,6 @@ class Artifact (DataNode):
     def update_data(self, artifact_data: any, *args, **kwargs) -> None:
         self.save_data(artifact_data, *args, **kwargs)
 
-    def get_update_tasks(self, *args, **kwargs) -> list:
-        return []
-
     def __str__(self) -> str:
         return "ARTIFACT"
 
@@ -49,10 +47,11 @@ class PickleFile (Artifact):
             return pickle.load(data_file)
 
 class CloudPickleFile (Artifact):
-    def save_data_to_path(self, artifact_data: any, path: str, *args, terminal_modules: set = set(), **kwargs) -> None:
-        terminal_modules.add(pyutils)
-        dependency_graph = DependencyGraph(terminal_modules)
-        mainify_dependencies(self, dependency_graph)
+    def save_data_to_path(self, artifact_data: any, path: str, *args, dependency_graph: DependencyGraph
+        = DependencyGraph(pyutils), **kwargs) -> None:
+
+        with RedirectIOStream(stdout_dest=os.devnull, stderr_dest=os.devnull):
+            mainify_dependencies(self, dependency_graph)
 
         with open(path, 'wb') as data_file:
             cloudpickle.dump(artifact_data, data_file, protocol=pickle.HIGHEST_PROTOCOL)
