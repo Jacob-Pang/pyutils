@@ -183,21 +183,8 @@ class DependencyGraphNode:
                     asname = reference.asname if reference.asname else reference.name
 
                     # Imported class or function
-                    if hasattr(parent_module, reference.name):
-                        self.dependency_imports[asname] = (getattr(parent_module, reference.name),
-                                source_code_chunk)
-
-                        assert inspect.isfunction(getattr(parent_module, reference.name)) or \
-                            inspect.isclass(getattr(parent_module, reference.name)), \
-                            f"{self.module.__name__} -> {reference.name}, {type(getattr(parent_module, reference.name))} " \
-                            + source_code_chunk
-                        
-                        if parent_module not in self.dependency_graph.dependency_nodes:
-                            DependencyGraphNode(parent_module, self.dependency_graph) \
-                                    .branch_dependencies(ignore_uninstalled)
-                    
                     # Imported classes and functions
-                    elif reference.name == "*": 
+                    if reference.name == "*": 
                         for class_name, class_ in inspect.getmembers(parent_module, inspect.isclass):
                             self.dependency_imports[class_name] = (class_, source_code_chunk)
                         
@@ -207,7 +194,28 @@ class DependencyGraphNode:
                         if parent_module not in self.dependency_graph.dependency_nodes:
                             DependencyGraphNode(parent_module, self.dependency_graph) \
                                     .branch_dependencies(ignore_uninstalled)
+
+                    elif hasattr(parent_module, reference.name):
+                        dependency_import = getattr(parent_module, reference.name)
+                        self.dependency_imports[asname] = (dependency_import, source_code_chunk)
+
+                        assert inspect.isfunction(getattr(parent_module, reference.name)) or \
+                            inspect.isclass(getattr(parent_module, reference.name)) or \
+                            inspect.ismodule(getattr(parent_module, reference.name)), \
+                            f"{self.module.__name__} -> {reference.name}, {type(getattr(parent_module, reference.name))} " \
+                            + source_code_chunk
+                        
+                        if inspect.ismodule(dependency_import) and dependency_import not in \
+                                self.dependency_graph.dependency_nodes:
+                            DependencyGraphNode(dependency_import, self.dependency_graph) \
+                                    .branch_dependencies(ignore_uninstalled)
+
+                        if not inspect.ismodule(dependency_import) and parent_module not in \
+                                self.dependency_graph.dependency_nodes:
+                            DependencyGraphNode(parent_module, self.dependency_graph) \
+                                    .branch_dependencies(ignore_uninstalled)
                     
+                    """
                     # Imported module
                     else:
                         imported_module = importlib.import_module(f"{parent_module_name}.{reference.name}")
@@ -216,6 +224,7 @@ class DependencyGraphNode:
                         if imported_module not in self.dependency_graph.dependency_nodes:
                             DependencyGraphNode(imported_module, self.dependency_graph) \
                                     .branch_dependencies(ignore_uninstalled)
+                    """
 
                 elif isinstance(node, ast.Import):
                     source_code_chunk = ast.get_source_segment(self.reduced_source_code, node)
