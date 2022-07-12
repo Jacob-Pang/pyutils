@@ -182,8 +182,6 @@ class DependencyGraphNode:
                     reference = node.names[0] # Reduced source ensures no grouped imports
                     asname = reference.asname if reference.asname else reference.name
 
-                    # Imported class or function
-                    # Imported classes and functions
                     if reference.name == "*": 
                         for class_name, class_ in inspect.getmembers(parent_module, inspect.isclass):
                             self.dependency_imports[class_name] = (class_, source_code_chunk)
@@ -198,12 +196,6 @@ class DependencyGraphNode:
                     elif hasattr(parent_module, reference.name):
                         dependency_import = getattr(parent_module, reference.name)
                         self.dependency_imports[asname] = (dependency_import, source_code_chunk)
-
-                        assert inspect.isfunction(getattr(parent_module, reference.name)) or \
-                            inspect.isclass(getattr(parent_module, reference.name)) or \
-                            inspect.ismodule(getattr(parent_module, reference.name)), \
-                            f"{self.module.__name__} -> {reference.name}, {type(getattr(parent_module, reference.name))} " \
-                            + source_code_chunk
                         
                         if inspect.ismodule(dependency_import) and dependency_import not in \
                                 self.dependency_graph.dependency_nodes:
@@ -214,17 +206,6 @@ class DependencyGraphNode:
                                 self.dependency_graph.dependency_nodes:
                             DependencyGraphNode(parent_module, self.dependency_graph) \
                                     .branch_dependencies(ignore_uninstalled)
-                    
-                    """
-                    # Imported module
-                    else:
-                        imported_module = importlib.import_module(f"{parent_module_name}.{reference.name}")
-                        self.dependency_imports[asname] = (imported_module, source_code_chunk)
-
-                        if imported_module not in self.dependency_graph.dependency_nodes:
-                            DependencyGraphNode(imported_module, self.dependency_graph) \
-                                    .branch_dependencies(ignore_uninstalled)
-                    """
 
                 elif isinstance(node, ast.Import):
                     source_code_chunk = ast.get_source_segment(self.reduced_source_code, node)
@@ -273,12 +254,9 @@ class DependencyGraphNode:
                     source_code_chunks.append(dependency_source_code)
             
             if module_import in unpacked_dependencies: # Source was codified successfully.
-                try:
-                    source_code = remove_module_references(source_code, asname) \
+                source_code = remove_module_references(source_code, asname) \
                         if inspect.ismodule(dependency_import) else \
                         decompose_references(source_code, asname, dependency_import.__name__)
-                except:
-                    raise Exception(dependency_import, type(dependency_import))
 
                 source_code = source_code.replace(source_code_chunk, '')
         
