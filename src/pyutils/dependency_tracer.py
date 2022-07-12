@@ -189,7 +189,8 @@ class DependencyGraphNode:
 
                         assert inspect.isfunction(getattr(parent_module, reference.name)) or \
                             inspect.isclass(getattr(parent_module, reference.name)), \
-                            f"{self.module.__name__} -> {reference.name}, {type(getattr(parent_module, reference.name))}"
+                            f"{self.module.__name__} -> {reference.name}, {type(getattr(parent_module, reference.name))} " \
+                            + source_code_chunk
                         
                         if parent_module not in self.dependency_graph.dependency_nodes:
                             DependencyGraphNode(parent_module, self.dependency_graph) \
