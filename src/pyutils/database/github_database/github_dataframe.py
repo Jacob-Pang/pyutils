@@ -12,33 +12,28 @@ from pyutils.github_ops.write_ops import delete_file, push_directory, write_file
 from pyutils.github_ops.read_ops import pull_directory, read_csv_to_pandas, read_parquet_to_pandas
 
 class GitHubDataFrame (GitHubArtifact, DataFrame):
-    def save_data_to_path(self, artifact_data: any, path: str, *args,
-        authenticated_repo: Repository = None, access_token: str = None,
-        commit_message: str = '', **kwargs) -> None:
+    def save_data_to_path(self, artifact_data: any, path: str, *args, authenticated_repo: Repository = None,
+        access_token: str = None, commit_message: str = '', **kwargs) -> None:
+
         file_content = io.StringIO()
         artifact_data.to_csv(file_content, index=False)
-        GitHubArtifact.save_data_to_path(self, file_content.getvalue(), path, *args,
-                authenticated_repo=authenticated_repo, access_token=access_token,
-                commit_message=commit_message, **kwargs)
+        GitHubArtifact.save_data_to_path(self, file_content.getvalue(), path, *args, authenticated_repo=authenticated_repo,
+                access_token=access_token, commit_message=commit_message, **kwargs)
 
     def read_data_from_path(self, path: str, *args, **kwargs) -> any:
-        return read_csv_to_pandas(self.get_user_name(), self.get_repo_name(),
-                path, self.get_branch(), **kwargs)
+        return read_csv_to_pandas(self.get_user_name(), self.get_repo_name(), path, self.get_branch(), **kwargs)
 
 class GitHubParquetDataFrame (GitHubArtifact, ParquetDataFrame):
     def get_partition_path(self, partition_field_values: tuple) -> str:
-        return github_relative_path(ParquetDataFrame.get_partition_path(self,
-                partition_field_values))
+        return github_relative_path(ParquetDataFrame.get_partition_path(self, partition_field_values))
     
     def save_data(self, artifact_data: any, *args, authenticated_repo: Repository = None,
         access_token: str = None, partition_columns: list = None, **kwargs) -> None:
-        return ParquetDataFrame.save_data(self, artifact_data, *args,
-                authenticated_repo=authenticated_repo, access_token=access_token,
-                partition_columns=partition_columns, **kwargs)
+        return ParquetDataFrame.save_data(self, artifact_data, *args, authenticated_repo=authenticated_repo,
+                access_token=access_token, partition_columns=partition_columns, **kwargs)
 
-    def save_data_to_path(self, artifact_data: any, path: str, *args,
-        authenticated_repo: Repository = None, access_token: str = None,
-        partition_cols: list = None, commit_message: str = '', **kwargs) -> None:
+    def save_data_to_path(self, artifact_data: any, path: str, *args, authenticated_repo: Repository = None,
+        access_token: str = None, partition_cols: list = None, commit_message: str = '', **kwargs) -> None:
         if not authenticated_repo:
             authenticated_repo = self.get_authenticated_repo(access_token)
 
