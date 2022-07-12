@@ -229,7 +229,7 @@ class DependencyGraphNode:
                                 isinstance(node, (ast.ClassDef, ast.FunctionDef, ast.Try, ast.If)))
             except Exception as parse_exception:
                 if not ignore_uninstalled:
-                    print(source_code_chunk)
+                    print(self.module.__name__, "->", source_code_chunk)
                     raise parse_exception
 
         for child_node in ast.iter_child_nodes(ast.parse(self.reduced_source_code)):
