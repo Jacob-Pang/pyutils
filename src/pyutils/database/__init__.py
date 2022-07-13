@@ -16,7 +16,7 @@ class DataBase (DataNode):
     def restore_database(data_node_id: str, connection_dpath: str = os.getcwd()) -> DataNode:
         database = CloudPickleFile(DataBase.memory_file_name(data_node_id), connection_dpath).read_data()
 
-        for child_data_node_id, child_node in database.child_nodes:
+        for child_data_node_id, child_node in database.child_nodes.items():
             # Lazy update of child databases
             if isinstance(child_node, DataBase):
                 database.child_nodes[child_data_node_id] = DataBase.restore_database(

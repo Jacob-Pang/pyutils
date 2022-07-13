@@ -17,7 +17,7 @@ class GitHubDataBase (GitHubDataNode, DataBase):
         from_remote_file_path = github_relative_path(f"{connection_dpath}/{DataBase.memory_file_name(data_node_id)}")
         database = cloudpickle.loads(read_file(user_name, repository_name, from_remote_file_path, branch))
 
-        for child_data_node_id, child_node in database.child_nodes:
+        for child_data_node_id, child_node in database.child_nodes.items():
             # Lazy update of child databases
             if isinstance(child_node, GitHubDataBase):
                 database.child_nodes[child_data_node_id] = GitHubDataBase.restore_database(
