@@ -64,12 +64,13 @@ class RequestLimitBlock:
 
 class RequestProvider:
     def __init__(self, request_limits: list = None, default_reschedule: int = 60,
-        api_key: int = None):
+        api_key: int = None, unique_id: str = None):
 
         self.running_tasks = {}
         self.running_request_count = 0
         self.default_reschdule = default_reschedule
         self.api_key = api_key
+        self.unique_id = unique_id if unique_id else int(time.time())
 
         self.request_limit_blocks = RequestLimitBlock(request_limits) \
                 if request_limits else None
@@ -95,15 +96,18 @@ class RequestProvider:
         
         self.running_request_count -= self.running_tasks.pop(request_id)
 
+    def __hash__(self) -> int:
+        return self.unique_id.__hash__()
+
 class RequestProviderManager:
     def __init__(self) -> None:
-        self.request_providers = {}
+        self.request_providers = dict()
 
-    def add_request_provider(self, request_provider_id: str, request_provider: any) -> None:
-        if request_provider_id in self.request_providers:
-            return self.request_providers.get(request_provider_id).append(request_provider)
+    def add_request_provider(self, request_provider: RequestProvider) -> None:
+        if request_provider.unique_id in self.request_providers:
+            return self.request_providers.get(request_provider.unique_id).append(request_provider)
         
-        self.request_providers[request_provider_id] = [request_provider]
+        self.request_providers[request_provider.unique_id] = [request_provider]
 
     def schedule_requests(self, request_provider_usage: dict = {}) -> tuple:
         """
