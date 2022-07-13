@@ -15,7 +15,16 @@ class GitHubDataBase (GitHubDataNode, DataBase):
     def restore_database(data_node_id: str, user_name: str, repository_name: str,
         connection_dpath: str = '', branch: str = "main") -> GitHubDataNode:
         from_remote_file_path = github_relative_path(f"{connection_dpath}/{DataBase.memory_file_name(data_node_id)}")
-        return cloudpickle.loads(read_file(user_name, repository_name, from_remote_file_path, branch))
+        database = cloudpickle.loads(read_file(user_name, repository_name, from_remote_file_path, branch))
+
+        for child_data_node_id, child_node in database.child_nodes:
+            # Lazy update of child databases
+            if isinstance(child_node, GitHubDataBase):
+                database.child_nodes[child_data_node_id] = GitHubDataBase.restore_database(
+                        child_data_node_id, child_node.user_name, child_node.repository_name,
+                        child_node.connection_dpath, child_node.branch)
+        
+        return database
 
     def __init__(self, data_node_id: str, user_name: str, repository_name: str,
         branch: str = "main", authenticated_user: AuthenticatedUser = None,

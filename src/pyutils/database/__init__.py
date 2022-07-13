@@ -13,9 +13,16 @@ class DataBase (DataNode):
         return f"{data_node_id}_dbase_memory"
 
     @staticmethod
-    def restore_database(data_node_id: str, 
-        connection_dpath: str = os.getcwd()) -> DataNode:
-        return CloudPickleFile(DataBase.memory_file_name(data_node_id), connection_dpath).read_data()
+    def restore_database(data_node_id: str, connection_dpath: str = os.getcwd()) -> DataNode:
+        database = CloudPickleFile(DataBase.memory_file_name(data_node_id), connection_dpath).read_data()
+
+        for child_data_node_id, child_node in database.child_nodes:
+            # Lazy update of child databases
+            if isinstance(child_node, DataBase):
+                database.child_nodes[child_data_node_id] = DataBase.restore_database(
+                        child_data_node_id, child_node.connection_dpath)
+        
+        return database
 
     def __init__(self, data_node_id: str, connection_dpath: str = os.getcwd(),
         description: str = None, parent_database: any = None, **field_kwargs) -> None:
