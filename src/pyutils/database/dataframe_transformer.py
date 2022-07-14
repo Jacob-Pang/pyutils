@@ -25,7 +25,7 @@ class DataFrameTransformer (DataNode):
 
 class MapTransformer (DataFrameTransformer):
     def __init__(self, data_node_id: str, connected_dataframe: DataFrame, mapper: any,
-        key_field_name: str, value_field_name: str = None, connection_dpath: str = None,\
+        key_field_name: str, value_field_name: str = None, connection_dpath: str = None,
         description: str = None, parent_database: any = None, **field_kwargs) -> None:
         """
         Parameters:
