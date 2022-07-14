@@ -65,7 +65,7 @@ class MapTransformer (DataFrameTransformer):
         
         return pdf
 
-class GroupByQuery (DataFrameTransformer):
+class GroupByTransformer (DataFrameTransformer):
     def __init__(self, data_node_id: str, connected_dataframe: DataFrame, groupby_field_names: Iterable = None,
         connection_dpath: str = None, description: str = None, parent_database: any = None, **field_kwargs) -> None:
         """
