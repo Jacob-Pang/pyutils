@@ -34,10 +34,9 @@ class MapTransformer (DataFrameTransformer):
                 Defaults to <key_field_name>.
             mapper (any):
                 (dict): Dictionary object with signature {field_key_value: field_mapped_value}.
-                (Artifact): Artifact object storing a dictionary object with the same requirements
-                        as field_map (dict).
-                (DataFrame): DataFrame object with signature [dfIndex | keyValue, mapValue, *].
-                        Ignores any columns beyond the second column.
+                (Artifact): Artifact object that returns a dictionary with the same requirements
+                        as field_map (dict) OR a pandas.DataFrame with columns <key_field_name>
+                        and <value_field_name>.
         """
         super().__init__(data_node_id, connected_dataframe, connection_dpath,
                 description, parent_database, **field_kwargs)
@@ -50,15 +49,15 @@ class MapTransformer (DataFrameTransformer):
         if isinstance(self.mapper, dict):
             return self.mapper
         
-        if isinstance(self.mapper, DataFrame):
-            mapper_pdf = self.mapper.read_data(*args, **kwargs)
-            key_column, value_column = mapper_pdf.columns.to_list()[:2]
-            return mapper_pdf.set_index(key_column)[value_column].to_dict()
+        data = self.mapper.read_data(*args, **kwargs)
+
+        if isinstance(data, dict):
+            return data
+
+        if isinstance(data, pd.DataFrame):
+            return data.set_index(self.key_field_name, drop=False)[self.value_field_name].to_dict()
         
-        if isinstance(self.mapper, Artifact):
-            return self.mapper.read_data(*args, **kwargs)
-        
-        raise Exception("MapTransformer has incompatible <mapper>.")
+        raise Exception()
     
     def read_data(self, *args, **kwargs) -> pd.DataFrame:
         pdf = DataFrameTransformer.read_data(self, *args, **kwargs)
