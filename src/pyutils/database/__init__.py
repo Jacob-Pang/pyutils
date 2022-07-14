@@ -78,10 +78,7 @@ class DataBase (DataNode):
 
     def add_child_node(self, data_node: DataNode) -> None:
         # Does not enforce ownership between this database and the child_node
-        if data_node.data_node_id in self.child_nodes or \
-            data_node.data_node_id == self.data_node_id:
-            raise Exception()
-
+        # Overrides any existing node connected by the node ID.
         self.child_nodes[data_node.data_node_id] = data_node
         self.autosave_database_memory()
 
