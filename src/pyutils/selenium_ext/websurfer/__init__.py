@@ -11,6 +11,7 @@ DRIVER_DPATH = os.path.join(Path(__file__).parent.parent.absolute(), "drivers")
 
 def auto_update_driver(method: callable):
     def wrapped_method(self, *args, **kwargs) -> any:
+        return method(self, *args, **kwargs)
         try:    return method(self, *args, **kwargs)
         except: pass
 
