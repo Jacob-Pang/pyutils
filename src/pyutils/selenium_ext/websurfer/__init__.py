@@ -5,6 +5,7 @@ from pathlib import Path
 from selenium import webdriver
 from selenium.webdriver.remote.webelement import WebElement
 from selenium.webdriver.common.action_chains import ActionChains
+from collections.abc import Iterable
 
 DRIVER_DPATH = os.path.join(Path(__file__).parent.parent.absolute(), "drivers")
 
@@ -18,12 +19,13 @@ def auto_update_driver(method: callable):
 
     return wrapped_method
 
-def wrap_methods(wrapped_object: any, method_wrapper: callable, *args, **kwargs) -> None:
+def wrap_methods(wrapped_object: any, method_wrapper: callable, skip_methods: Iterable = set(),
+    *args, **kwargs) -> None:
     for method_name in dir(wrapped_object):
         try:    method = getattr(wrapped_object, method_name)
         except: continue
 
-        if method_name[0] == "_" or not callable(method):
+        if method in skip_methods or method_name[0] == "_" or not callable(method):
             continue # protected method
     
         setattr(wrapped_object, method_name, method_wrapper(method, *args, **kwargs))
@@ -71,7 +73,8 @@ class WebsurferBase(webdriver.Chrome, webdriver.Firefox):
             )
 
         driver.__init__(self, service=service_construct(self.driver_path()), options=options)
-        wrap_methods(self, busy_waiting_execution, wrap_output_types=WebElement)
+        wrap_methods(self, busy_waiting_execution, skip_methods={self.get},
+                wrap_output_types=WebElement) # Get method known to be buggy post-wrapping.
 
     def __enter__(self):
         return self
