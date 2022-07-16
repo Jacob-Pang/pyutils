@@ -46,7 +46,7 @@ def busy_waiting_execution(method, wrap_output_types: any = None) -> callable:
             except Exception as exception:
                 if ignore_exception: # Forced bypass option
                     execution_state = True
-                    break
+                    return None
 
                 exception_trace = exception
                 time.sleep(request_freq)    
