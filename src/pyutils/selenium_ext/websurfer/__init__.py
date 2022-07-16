@@ -32,7 +32,7 @@ def wrap_methods(wrapped_object: any, method_wrapper: callable, skip_methods: It
         setattr(wrapped_object, method_name, method_wrapper(method, *args, **kwargs))
 
 def busy_waiting_execution(method, wrap_output_types: any = None) -> callable:
-    def wrapped_method(*args, timeout = 5., request_freq = .5, **kwargs):
+    def wrapped_method(*args, timeout = 5., request_freq = .5, ignore_exception: bool = False, **kwargs):
         execution_state = False
         exception_trace = None
 
@@ -44,6 +44,10 @@ def busy_waiting_execution(method, wrap_output_types: any = None) -> callable:
                 execution_state = True
                 break
             except Exception as exception:
+                if ignore_exception: # Forced bypass option
+                    execution_state = True
+                    break
+
                 exception_trace = exception
                 time.sleep(request_freq)    
 
