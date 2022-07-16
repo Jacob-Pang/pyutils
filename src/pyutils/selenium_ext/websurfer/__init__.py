@@ -11,7 +11,6 @@ DRIVER_DPATH = os.path.join(Path(__file__).parent.parent.absolute(), "drivers")
 
 def auto_update_driver(method: callable):
     def wrapped_method(self, *args, **kwargs) -> any:
-        return method(self, *args, **kwargs)
         try:    return method(self, *args, **kwargs)
         except: pass
 
@@ -26,9 +25,10 @@ def wrap_methods(wrapped_object: any, method_wrapper: callable, skip_methods: It
         try:    method = getattr(wrapped_object, method_name)
         except: continue
 
-        if method in skip_methods or method_name[0] == "_" or not callable(method):
+        if method_name[0] == "_" or not callable(method):
             continue # protected method
-    
+
+        if method in skip_methods: continue
         setattr(wrapped_object, method_name, method_wrapper(method, *args, **kwargs))
 
 def busy_waiting_execution(method, wrap_output_types: any = None) -> callable:
