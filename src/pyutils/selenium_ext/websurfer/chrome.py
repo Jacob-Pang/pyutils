@@ -22,8 +22,9 @@ class ChromeSurfer(WebsurferBase):
         return "chromedriver"
 
     @staticmethod
-    def update_driver(os_type: str = "win32"):
-        version = requests.get("https://chromedriver.storage.googleapis.com/LATEST_RELEASE").text
+    def update_driver(version = None, os_type: str = "win32"):
+        if not version:
+            version = requests.get("https://chromedriver.storage.googleapis.com/LATEST_RELEASE").text
         
         chromedriver_zip = wget.download(
             f"https://chromedriver.storage.googleapis.com/{version}/chromedriver_{os_type}.zip",
