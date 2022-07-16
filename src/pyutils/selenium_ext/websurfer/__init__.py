@@ -74,8 +74,7 @@ class WebsurferBase(webdriver.Chrome, webdriver.Firefox):
             )
 
         driver.__init__(self, service=service_construct(self.driver_path()), options=options)
-        wrap_methods(self, busy_waiting_execution, skip_methods={self.get},
-                wrap_output_types=WebElement) # Get method known to be buggy post-wrapping.
+        wrap_methods(self, busy_waiting_execution, wrap_output_types=WebElement)
 
     def __enter__(self):
         return self
