@@ -297,7 +297,7 @@ def mainify_dependencies(obj: (types.ModuleType | types.FunctionType | object),
     unpacked_dependencies.add(module)
 
     if source_code:
-        executable_code = compile(node.get_source_code(unpacked_dependencies), "<string>", "exec")
+        executable_code = compile(source_code, "<string>", "exec")
         exec(executable_code, __main__.__dict__)
 
     # Mainify nested attributes within collections.
