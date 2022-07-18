@@ -1,12 +1,7 @@
 import cloudpickle
-import os
 import pickle
-import pyutils
 
 from github import Repository
-from pyutils.wrappers import RedirectIOStream
-from pyutils.dependency_tracer import DependencyGraph
-from pyutils.dependency_tracer import mainify_dependencies
 from pyutils.database.artifact import Artifact, CloudPickleFile, PickleFile
 from pyutils.database.github_database.github_data_node import GitHubDataNode
 from pyutils.github_ops.write_ops import write_files
@@ -39,15 +34,9 @@ class GitHubPickleFile (GitHubArtifact, PickleFile):
 
 class GitHubCloudPickleFile (GitHubArtifact, CloudPickleFile):
     def save_data_to_path(self, artifact_data: any, path: str, *args, authenticated_repo: Repository = None,
-        access_token: str = None, commit_message: str = '', dependency_graph: DependencyGraph = DependencyGraph(),
-        **kwargs) -> None:
-
-        with RedirectIOStream(stdout_dest=os.devnull, stderr_dest=os.devnull):
-            dependency_graph.set_terminal_module(pyutils)
-            mainify_dependencies(self, dependency_graph)
+        access_token: str = None, commit_message: str = '', **kwargs) -> None:
 
         file_content = cloudpickle.dumps(artifact_data)
-
         GitHubArtifact.save_data_to_path(self, file_content, path, *args, authenticated_repo=authenticated_repo,
                 access_token=access_token, commit_message=commit_message, **kwargs)
 

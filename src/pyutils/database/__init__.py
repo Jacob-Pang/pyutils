@@ -1,11 +1,9 @@
 import os
 import pandas as pd
-import pyutils
 
 from collections.abc import Iterable
 from pyutils.database.data_node import DataNode
 from pyutils.database.artifact import CloudPickleFile
-from pyutils.dependency_tracer import DependencyGraph
 
 class DataBase (DataNode):
     @staticmethod
@@ -37,10 +35,9 @@ class DataBase (DataNode):
 
         self.add_connected_child_node(memory_node)
 
-    def save_database_memory(self, *args, dependency_graph: DependencyGraph = DependencyGraph(),
-        **kwargs) -> None:
+    def save_database_memory(self, *args, **kwargs) -> None:
         self.get_child_node(DataBase.memory_file_name(self.data_node_id)).save_data(
-                self, *args, dependency_graph=dependency_graph, **kwargs)
+                self, *args, **kwargs)
 
     def autosave_database_memory(self) -> None:
         self.save_database_memory()

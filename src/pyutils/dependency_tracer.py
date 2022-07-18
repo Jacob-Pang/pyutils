@@ -119,6 +119,11 @@ class DependencyGraph:
         for terminal_module in terminal_modules:
             self.set_terminal_module(terminal_module)
 
+        # Known exception-causing modules
+        import numpy
+
+        self.set_terminal_module(numpy)
+
     def set_terminal_module(self, terminal_module: types.ModuleType) -> None:
         """ Sets terminal status on the module, recursively imported dependencies and
         defined modules within the parent package.
