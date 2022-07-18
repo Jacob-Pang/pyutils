@@ -72,6 +72,12 @@ class PyTask (FunctionWrapper):
             elif task_output:
                 reschedule_task, gate_usage = bool(task_output), True
 
+            # Reschedule where the following conditions are met:
+            # 1. frequency has been defined.
+            # 2. task_count has not been defined (None) or task_count is greater than 0.
+            # 3. task_output has not been defined (None) or task_output is True.
+            reschedule_task = reschedule_task and self.freq and (self.task_count is None or self.task_count > 0)
+
         except Exception as task_exception:
             if self.retry_count > self.max_retries:
                 raise task_exception
@@ -80,14 +86,9 @@ class PyTask (FunctionWrapper):
 
         for gate, _ in allocated_gates.items(): # complete requests and update usage capacity.
             gate.complete_requests(self.task_id, gate_usage)
-
-        # Reschedule where the following conditions are met:
-        # 1. frequency has been defined.
-        # 2. task_count has not been defined (None) or task_count is greater than 0.
-        # 3. task_output has not been defined (None) or task_output is True.
-        self.scheduled_timestamp = time.time() + self.freq if reschedule_task and self.freq and \
-                (self.task_count is None or self.task_count > 0) else None
         
+        self.scheduled_timestamp = time.time() + self.freq if reschedule_task else None
+
         # Reset tracking parameters.
         self.blocked_count = 0
         self.retry_count = 0
