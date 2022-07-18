@@ -119,10 +119,7 @@ class DependencyGraph:
         for terminal_module in terminal_modules:
             self.set_terminal_module(terminal_module)
 
-        # Known exception-causing modules
-        import numpy
-
-        self.set_terminal_module(numpy)
+        self.set_exception_modules()
 
     def set_terminal_module(self, terminal_module: types.ModuleType) -> None:
         """ Sets terminal status on the module, recursively imported dependencies and
@@ -145,6 +142,18 @@ class DependencyGraph:
 
         for defined_module in unpack_packages(package, ignore_uninstalled=True):
             self.set_terminal_module(defined_module)
+
+    def set_exception_modules(self) -> None:
+        # Set known exception-causing modules
+        try:
+            import numpy
+            self.set_terminal_module(numpy)
+        except: pass
+
+        try:
+            import urllib3
+            self.set_terminal_module(urllib3)
+        except: pass
 
 class DependencyGraphNode:
     def __init__(self, module: types.ModuleType, dependency_graph: DependencyGraph = DependencyGraph()) -> None:
@@ -249,7 +258,7 @@ class DependencyGraphNode:
     def get_source_code(self, unpacked_dependencies: set = set()) -> (str | None):
         if self.module in self.dependency_graph.terminal_modules or builtin_or_stdlib(self.module):
             return None
-
+        
         source_code = self.reduced_source_code
         unpacked_dependencies.add(self.module)
         source_code_chunks = []
@@ -267,11 +276,13 @@ class DependencyGraphNode:
                     source_code_chunks.append(dependency_source_code)
             
             if module_import in unpacked_dependencies: # Source was codified successfully.
-                source_code = remove_module_references(source_code, asname) \
-                        if inspect.ismodule(dependency_import) else \
-                        decompose_references(source_code, asname, dependency_import.__name__)
+                if inspect.ismodule(dependency_import):
+                    source_code = remove_module_references(source_code, asname)
+                    source_code = source_code.replace(source_code_chunk, '')
 
-                source_code = source_code.replace(source_code_chunk, '')
+                if inspect.isclass(dependency_import) or inspect.isfunction(dependency_import):
+                    source_code = decompose_references(source_code, asname, dependency_import.__name__)
+                    source_code = source_code.replace(source_code_chunk, '')
         
         # Append comment header
         source_code = f"# {self.module.__name__} unpacked source code SOF -------------------------\n{source_code}"
