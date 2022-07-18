@@ -2,110 +2,128 @@ import time
 import heapq
 import random
 
+from collections.abc import Iterable
 from pyutils.wrappers import FunctionWrapper
-from pyutils.pytask_scheduler.request_provider import RequestProviderManager
 
 class PyTask (FunctionWrapper):
-    def __init__(self, function: callable, task_id: str = None, scheduled_time: int = time.time(),
-        freq: int = None, task_count: int = None, request_provider_usage: dict = {}, **default_kwargs):
+    def __init__(self, function: callable, task_id: str = None, scheduled_timestamp: int = time.time(),
+        freq: int = None, task_count: int = None, max_retries: int = 0, request_provider_usage: dict = {},
+        **default_kwargs):
         """
         Parameters:
             function (callable): The function to call in order to run the task.
             task_id (str): Unique ID to identify the task with. If unspecified, a random ID will be
                     generated for the task.
-            scheduled_time (int): Scheduled time to run the task.
+            scheduled_timestamp (int): Scheduled time to run the task.
             freq (int): The frequency in seconds by which to run the task. If unspecified (None),
                     the task runs only once.
             task_count (int): The number of times to run the task. If unspecified (None), the task will
                     be run indefinitely.
             provider_id (str): The request provider id to track runs.
-            request_provider_usage (dict): The mapping of { request_provider_id: request_counts }, where
-                    request_counts is the number of requests consumed per execution.
+            max_retries (int, opt): The number of times to retry the task in the event of exceptions.
+                    Re-attempts are reset upon successful completion of the task.
+            request_provider_usage (dict): The mapping of { RequestProvider: requests }, where
+                    requests is the number of requests consumed per execution.
         """
         FunctionWrapper.__init__(self, function, **default_kwargs)
-        self.task_id = f"pytask_{int(random.random() * 1e5)}_{int(time.time())}" \
-                if not task_id else task_id
+
+        if not task_id:
+            task_id = f"pytask_{int(time.time())}_{int(random.random() * 1e5)}"
         
-        self.scheduled_time = scheduled_time
+        self.task_id = task_id
+        self.scheduled_timestamp = scheduled_timestamp
         self.freq = freq
         self.task_count = task_count
         self.request_provider_usage = request_provider_usage
+        self.max_retries = max_retries
+
+        self.retry_count = 0
         self.blocked_count = 0
 
     def __call__(self, *args, **kwargs) -> any:
-        if self.task_count:
-            self.task_count -= 1
+        allocated_gates = dict()
 
-        task_output = FunctionWrapper.__call__(self, *args, **kwargs)
-        self.scheduled_time = time.time() + self.freq if self.freq and (self.task_count is None
-                or self.task_count > 0) else None
-        
-        self.blocked_count = 0
-        return task_output
+        for request_provider, requests in self.request_provider_usage.items():
+            gate, timestamp = request_provider.get_next_available_timestamp(requests)
 
-    def schedule(self, scheduled_time: int) -> None:
-        if scheduled_time > time.time(): # Blocking reschedule.
-            self.blocked_count += 1
-        
-        self.scheduled_time = scheduled_time
-        
-    def __lt__(self, other: object):
-        if self.scheduled_time < other.scheduled_time:
-            return True
-        
-        return self.blocked_count > other.blocked_count
-
-class PyTaskScheduler:
-    def __init__(self, request_provider_manager: RequestProviderManager = RequestProviderManager()):
-        self.request_provider_manager = request_provider_manager
-
-    def run_tasks(self, tasks: list, reschedule_verbose: bool = True, **kwargs) -> None:
-        tasks = sorted(tasks)
-        heapq.heapify(tasks)
-
-        while tasks:
-            task = heapq.heappop(tasks)
-
-            while task.scheduled_time > time.time():
-                time.sleep(1) # Busy waiting
+            if timestamp > time.time():
+                self.scheduled_timestamp = timestamp # Reschedule task
+                self.blocked_count += 1
+                return
             
-            # Schedule the tasks
-            scheduled_time, request_providers, constraint_request_provider_id = self \
-                    .request_provider_manager.schedule_requests(task.request_provider_usage)
+            allocated_gates[gate] = requests
 
-            task.schedule(scheduled_time)
+        for gate, requests in allocated_gates.items(): # process requests
+            gate.process_requests(self.task_id, requests)    
 
-            if scheduled_time > time.time():
-                heapq.heappush(tasks, task) # Requeue blocked task
-                if reschedule_verbose:
-                    print(f"{int(time.time())}: RequestProvider: {constraint_request_provider_id}",
-                            f"reached maximum requests limit. Task: {task.task_id[:15]:<15}",
-                            f"rescheduled to {int(scheduled_time)}")
-                
-                continue
+        # Default settings in event of undefined response or exception.
+        reschedule_task, gate_usage, task_success = True, True, False
 
-            print(f"{int(time.time())}: Running task: {task.task_id[:15]:<15} ... ", end='')
-            api_keys = {}
+        try:
+            gate_keys = { gate.gate_id: gate.gate_keys for gate in allocated_gates }
+            task_output = FunctionWrapper.__call__(self, *args, gate_keys=gate_keys, **kwargs)
+            task_success = True
 
-            for request_provider_id, request_provider in request_providers.items():
-                api_keys[request_provider_id] = request_provider.api_key
-                request_provider.run_requests(task.task_id, task.request_provider_usage \
-                            .get(request_provider_id))
-                
-            task(api_keys=api_keys, **kwargs) # Run task
-            print(f"completed at {int(time.time())}.")
+            if self.task_count: # Decrement count
+                self.task_count -= 1
 
-            for request_provider_id, request_provider in request_providers.items():
-                request_provider.complete_requests(task.task_id)
+            if isinstance(task_output, tuple):
+                reschedule_task, gate_usage = task_output
+            elif task_output:
+                reschedule_task, gate_usage = bool(task_output), True
 
-            if task.scheduled_time:
-                heapq.heappush(tasks, task) # Requeue blocked task
+        except Exception as task_exception:
+            if self.retry_count > self.max_retries:
+                raise task_exception
+            
+            self.retry_count += 1
 
-                if reschedule_verbose:
-                    print(f"{int(time.time())}: Task: {task.task_id[:15]:<15}",
-                            f"rescheduled to {int(task.scheduled_time)}")
+        for gate, _ in allocated_gates.items(): # complete requests and update usage capacity.
+            gate.complete_requests(self.task_id, gate_usage)
 
-            print(f"PyTask scheduler tasks remaining: {len(tasks)}")
+        # Reschedule where the following conditions are met:
+        # 1. frequency has been defined.
+        # 2. task_count has not been defined (None) or task_count is greater than 0.
+        # 3. task_output has not been defined (None) or task_output is True.
+        self.scheduled_timestamp = time.time() + self.freq if reschedule_task and self.freq and \
+                (self.task_count is None or self.task_count > 0) else None
+        
+        # Reset tracking parameters.
+        self.blocked_count = 0
+        self.retry_count = 0
+
+        return task_success
+
+    def __lt__(self, other: object):
+        current_timestamp = time.time()
+
+        if (self.scheduled_timestamp <= current_timestamp and other.scheduled_timestamp <= current_timestamp) \
+            or self.scheduled_timestamp == other.scheduled_timestamp:
+            return self.blocked_count > other.blocked_count    
+        
+        return self.scheduled_timestamp == other.scheduled_timestamp
+
+
+def run_pytasks_scheduler(pytasks: Iterable, verbose: bool = True, **kwargs) -> None:
+    pytasks = sorted(pytasks)
+    heapq.heapify(pytasks)
+
+    while pytasks:
+        pytask = heapq.heappop(pytasks)
+
+        while pytask.scheduled_timestamp > time.time():
+            time.sleep(1) # Busy waiting
+
+        task_success = pytask(**kwargs)
+
+        if task_success and verbose:
+            print(f"{int(time.time())}: successfully completed {pytask.task_id}.")
+
+        if pytask.scheduled_timestamp: # Has rescheduled timing
+            heapq.heappush(pytasks, pytask) # Requeue
+
+            if verbose:
+                print(f"{int(time.time())}: {pytask.task_id} rescheduled at {int(pytask.scheduled_timestamp)}.")
 
 if __name__ == "main":
     pass
