@@ -79,7 +79,7 @@ class PyTask (FunctionWrapper):
             reschedule_task = reschedule_task and self.freq and (self.task_count is None or self.task_count > 0)
 
         except Exception as task_exception:
-            if self.retry_count > self.max_retries:
+            if self.retry_count >= self.max_retries:
                 raise task_exception
             
             self.retry_count += 1
