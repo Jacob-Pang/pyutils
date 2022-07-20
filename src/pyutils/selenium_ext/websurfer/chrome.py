@@ -9,6 +9,11 @@ from pyutils.selenium_ext.websurfer import DRIVER_DPATH
 from pyutils.selenium_ext.websurfer import WebsurferBase
 
 class ChromeSurfer(WebsurferBase):
+    @staticmethod
+    def default_headless_option_args() -> tuple:
+        return "--headless", "--disable-gpu", "--window-size=1920,1200", "--ignore-certificate-errors", \
+            "--disable-extensions", "--no-sandbox", "--disable-dev-shm-usage"
+        
     def __init__(self, *option_args, preferences: dict = None):
         WebsurferBase.__init__(
             self, webdriver.Chrome,
