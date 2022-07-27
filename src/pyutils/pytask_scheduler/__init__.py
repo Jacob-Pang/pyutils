@@ -70,7 +70,6 @@ class PyTask (FunctionWrapper):
 
             execution_time = time.time() - start_time
             task_success = True
-            print("success?")
 
             if self.task_count: # Decrement count
                 self.task_count -= 1
@@ -87,7 +86,6 @@ class PyTask (FunctionWrapper):
             reschedule_task = reschedule_task and self.freq and (self.task_count is None or self.task_count > 0)
 
         except Exception as task_exception:
-            print("failure")
             if self.retry_count >= self.max_retries:
                 raise task_exception
             
