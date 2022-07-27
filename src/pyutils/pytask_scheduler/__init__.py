@@ -16,7 +16,10 @@ class PyTask (FunctionWrapper):
                     generated for the task.
             scheduled_timestamp (int): Scheduled time to run the task.
             freq (int): The frequency in seconds by which to run the task. If unspecified (None),
-                    the task runs only once.
+                    the task runs only once. Frequency does not account for the duration spent on
+                    execution: if the frequency is 60s and a task takes 10s, the task is rescheduled
+                    50s after the execution is completed. If the execution time exceeds the frequency
+                    then the task is rescheduled 5s after the execution is completed.
             task_count (int): The number of times to run the task. If unspecified (None), the task will
                     be run indefinitely.
             provider_id (str): The request provider id to track runs.
@@ -58,10 +61,14 @@ class PyTask (FunctionWrapper):
 
         # Default settings in event of undefined response or exception.
         reschedule_task, gate_usage, task_success = True, True, False
+        execution_time = 0
 
         try:
             gate_keys = { gate.gate_id: gate.gate_keys for gate in allocated_gates }
+            start_time = time.time()
             task_output = FunctionWrapper.__call__(self, *args, gate_keys=gate_keys, **kwargs)
+
+            execution_time = time.time() - start_time
             task_success = True
 
             if self.task_count: # Decrement count
@@ -87,8 +94,11 @@ class PyTask (FunctionWrapper):
         for gate, _ in allocated_gates.items(): # complete requests and update usage capacity.
             gate.complete_requests(self.task_id, gate_usage)
         
-        self.scheduled_timestamp = time.time() + self.freq if reschedule_task else None
-
+        if reschedule_task:
+            self.scheduled_timestamp = time.time() + (
+                max(self.freq - execution_time, 5) if task_success else 10
+            )
+                
         # Reset tracking parameters.
         self.blocked_count = 0
         self.retry_count = 0
