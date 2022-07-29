@@ -55,17 +55,17 @@ class GitHubParquetDataFrame (GitHubArtifact, ParquetDataFrame):
         ParquetDataFrame.save_data_to_path(self, artifact_data, temp_local_file_path,
                 partition_cols=partition_cols)
 
-        push_directory(authenticated_repo, from_temp_local_directory_path,
-                os.path.dirname(path), self.get_branch(), commit_message)
+        push_directory(authenticated_repo, from_temp_local_directory_path, os.path.dirname(path),
+                self.get_branch(), commit_message)
 
         shutil.rmtree(from_temp_local_directory_path)
         self.version_timestamp = time.time()
 
-    def read_data(self, *args, filters: list = None, **kwargs) -> pd.DataFrame:
+    def read_data(self, *args, filters: list = None, access_token: str = None, **kwargs) -> pd.DataFrame:
         if not filters or not self.partition_columns:
-            return ParquetDataFrame.read_data(self, *args, **kwargs)
+            return ParquetDataFrame.read_data(self, *args, access_token=access_token, **kwargs)
 
-        repository = self.get_repository()
+        repository = self.get_authenticated_repo(access_token) if access_token else self.get_repository()
         remote_file_paths = [
             remote_file_obj.path for remote_file_obj in
             repository_walk(repository, self.get_node_path(), self.get_branch())
@@ -119,6 +119,8 @@ class GitHubParquetDataFrame (GitHubArtifact, ParquetDataFrame):
                 partition_file_path = remote_partition_contents[0].path
             except: pass
 
+            print(partition_field_values, partition_file_path)
+
             if partition_file_path:
                 previous_partition_artifact_data = self.read_data_from_path(partition_file_path,
                         *args, access_token=access_token, **kwargs)
@@ -134,11 +136,10 @@ class GitHubParquetDataFrame (GitHubArtifact, ParquetDataFrame):
                 delete_file(authenticated_repo, partition_file_path, self.get_branch(),
                         commit_message=commit_message)
 
-            ParquetDataFrame.save_data_to_path(self, partition_artifact_data,
-                    temp_local_file_path, partition_cols=self.partition_columns)
+            ParquetDataFrame.save_data_to_path(self, partition_artifact_data, temp_local_file_path,
+                    partition_cols=self.partition_columns)
 
-        push_directory(authenticated_repo, temp_local_file_path,
-                self.get_node_path(), self.get_branch(),
+        push_directory(authenticated_repo, temp_local_file_path, self.get_node_path(), self.get_branch(),
                 commit_message=commit_message)
 
         shutil.rmtree(temp_local_directory_path)
