@@ -115,8 +115,8 @@ class GitHubParquetDataFrame (GitHubArtifact, ParquetDataFrame):
             partition_dpath = self.get_partition_path(partition_field_values)
             partition_file_path = None
 
-            print(partition_file_path)
             try: # Attempt to retrieve previous partition data
+                print(partition_dpath)
                 remote_partition_contents = authenticated_repo.get_contents(partition_dpath)
                 print(remote_partition_contents)
                 partition_file_path = remote_partition_contents[0].path
