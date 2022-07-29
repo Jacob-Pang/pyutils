@@ -112,6 +112,7 @@ class GitHubParquetDataFrame (GitHubArtifact, ParquetDataFrame):
         # Partitioning update optimization
         for partition_field_values, partition_artifact_data in artifact_data.groupby(
             by=self.partition_columns):
+            print(partition_field_values)
             partition_dpath = self.get_partition_path(partition_field_values)
             partition_file_path = None
 
