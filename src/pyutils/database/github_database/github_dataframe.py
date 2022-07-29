@@ -115,12 +115,15 @@ class GitHubParquetDataFrame (GitHubArtifact, ParquetDataFrame):
             partition_dpath = self.get_partition_path(partition_field_values)
             partition_file_path = None
 
+            print(partition_file_path)
             try: # Attempt to retrieve previous partition data
                 remote_partition_contents = authenticated_repo.get_contents(partition_dpath)
+                print(remote_partition_contents)
                 partition_file_path = remote_partition_contents[0].path
             except: pass
 
             if partition_file_path:
+                print("pre-exsiting")
                 previous_partition_artifact_data = self.read_data_from_path(partition_file_path,
                         *args, access_token=access_token, **kwargs)
                 
