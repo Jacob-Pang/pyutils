@@ -64,6 +64,7 @@ class GitHubDataBase (GitHubDataNode, DataBase):
         return self.authenticated_user
 
     def get_authenticated_repo(self, access_token: str = None) -> Repository:
+        # Returns an authenticated repo
         if self.authenticated_repo:
             return self.authenticated_repo
         
@@ -73,12 +74,13 @@ class GitHubDataBase (GitHubDataNode, DataBase):
         self.repository = self.authenticated_repo
         return self.authenticated_repo
 
-    def get_repository(self) -> Repository:
+    def get_repository(self, access_token: str = None) -> Repository:
+        # Returns an authenticated repo where possible
+        if access_token or self.authenticated_user:
+            return self.get_authenticated_repo(access_token)
+
         if self.repository:
             return self.repository
-        
-        if self.authenticated_user:
-            return self.get_authenticated_repo()
         
         self.repository = get_repository(self.get_repo_name(), self.get_user_name())
         return self.repository

@@ -65,7 +65,7 @@ class GitHubParquetDataFrame (GitHubArtifact, ParquetDataFrame):
         if not filters or not self.partition_columns:
             return ParquetDataFrame.read_data(self, *args, access_token=access_token, **kwargs)
 
-        repository = self.get_authenticated_repo(access_token) if access_token else self.get_repository()
+        repository = self.get_repository(access_token=access_token)
         remote_file_paths = [
             remote_file_obj.path for remote_file_obj in
             repository_walk(repository, self.get_node_path(), self.get_branch())
@@ -88,8 +88,9 @@ class GitHubParquetDataFrame (GitHubArtifact, ParquetDataFrame):
 
     def read_data_from_path(self, path: str, *args, authenticated_repo: Repository = None,
         access_token: str = None, **kwargs) -> pd.DataFrame:
-        if access_token and not authenticated_repo:
-            authenticated_repo = self.get_authenticated_repo(access_token)
+        
+        if not authenticated_repo:
+            authenticated_repo = self.get_repository(access_token=access_token)
 
         return read_parquet_to_pandas(self.get_user_name(), self.get_repo_name(), path,
                 self.get_branch(), repository=authenticated_repo)
@@ -118,8 +119,6 @@ class GitHubParquetDataFrame (GitHubArtifact, ParquetDataFrame):
                 remote_partition_contents = authenticated_repo.get_contents(partition_dpath)
                 partition_file_path = remote_partition_contents[0].path
             except: pass
-
-            print(partition_field_values, partition_file_path)
 
             if partition_file_path:
                 previous_partition_artifact_data = self.read_data_from_path(partition_file_path,

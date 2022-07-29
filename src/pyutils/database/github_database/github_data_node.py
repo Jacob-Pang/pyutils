@@ -24,8 +24,8 @@ class GitHubDataNode (DataNode):
     def get_authenticated_repo(self, access_token: str = None) -> Repository:
         return self.parent_database.get_authenticated_repo(access_token)
 
-    def get_repository(self) -> Repository:
-        return self.parent_database.get_repository()
+    def get_repository(self, access_token: str = None) -> Repository:
+        return self.parent_database.get_repository(access_token=access_token)
 
     def get_node_path(self) -> str:
         return github_relative_path(DataNode.get_node_path(self))
