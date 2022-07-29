@@ -112,19 +112,20 @@ class GitHubParquetDataFrame (GitHubArtifact, ParquetDataFrame):
         # Partitioning update optimization
         for partition_field_values, partition_artifact_data in artifact_data.groupby(
             by=self.partition_columns):
-            print(partition_field_values)
+            
+            if not isinstance(partition_field_values, tuple):
+                # Groupby returns singular value for single partition column
+                partition_field_values = tuple([partition_field_values])
+
             partition_dpath = self.get_partition_path(partition_field_values)
             partition_file_path = None
 
             try: # Attempt to retrieve previous partition data
-                print(partition_dpath)
                 remote_partition_contents = authenticated_repo.get_contents(partition_dpath)
-                print(remote_partition_contents)
                 partition_file_path = remote_partition_contents[0].path
             except: pass
 
             if partition_file_path:
-                print("pre-exsiting")
                 previous_partition_artifact_data = self.read_data_from_path(partition_file_path,
                         *args, access_token=access_token, **kwargs)
                 

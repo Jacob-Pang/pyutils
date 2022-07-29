@@ -59,7 +59,6 @@ class ParquetDataFrame (DataFrame):
                 parent_database, **field_kwargs)
 
     def get_partition_path(self, partition_field_values: tuple) -> str:
-        print(partition_field_values)
         return os.path.join(self.get_node_path(), *[
             f"{partition_column}={partition_field_value}"
             for partition_column, partition_field_value in zip(self.partition_columns,
