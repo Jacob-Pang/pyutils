@@ -200,7 +200,7 @@ class GraphDataFrame:
             encoded_partition_pdf = self.read_data_from_file_path(partition_file_path)
             decoded_partition_pdf = graph_schema.dtype_schema.decode_dtype(encoded_partition_pdf)
 
-            for column, column_value in partition_column_values:
+            for column, column_value in partition_column_values.items():
                 decoded_partition_pdf[column] = column_value
 
             partition_pdfs.append(decoded_partition_pdf)
