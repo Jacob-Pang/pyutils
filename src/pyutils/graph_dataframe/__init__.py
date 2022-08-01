@@ -23,7 +23,7 @@ class DtypeSchema:
         for column in pdf.columns:
             for dtype_encoder in DTYPE_ENCODERS:
                 if dtype_encoder.has_base_dtype(pdf[column]):
-                    self.dtype_encoder_schema[column] = dtype_encoder(pdf[column])
+                    self.dtype_encoder_schema[column] = dtype_encoder
                     break
             
             if column not in self.dtype_encoder_schema:
