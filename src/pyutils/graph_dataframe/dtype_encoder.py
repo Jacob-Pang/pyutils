@@ -66,23 +66,23 @@ class PeriodDtypeEncoder (DateTimeDtypeEncoder):
         return is_period_dtype(data)
     
     def encode_dtype(self, data: any) -> (int | str | float):
-        freq = data.dt.freq if isinstance(data, pd.Series) else data.freq
+        freqstr = data.dt.freq.freqstr if isinstance(data, pd.Series) else data.freqstr
         datetime_data = data.dt.to_timestamp() if isinstance(data, pd.Series) else data.to_timestamp()
         encoded_data = super().encode_dtype(datetime_data)
 
-        return f"{freq}." + encoded_data
+        return encoded_data + f"={freqstr}"
 
     def decode_dtype(self, data: (int | str | float)) -> pd.Period:
         if isinstance(data, str):
-            freq, data = data[0], data[2:]
-            return super().decode_dtype(data).to_period(freq)
+            data, freqstr = data.split('=')
+            return super().decode_dtype(data).to_period(freqstr)
 
-        freq = data[0][0]
-        data = data.str.lstrip(f"{freq}.")
+        freqstr = data[0].split('=')[1]
+        data = data.str.rstrip(f"={freqstr}")
         decoded_data = super().decode_dtype(data)
 
-        return decoded_data.dt.to_period(freq) if isinstance(data, pd.Series) \
-                else decoded_data.to_period(freq)
+        return decoded_data.dt.to_period(freqstr) if isinstance(data, pd.Series) \
+                else decoded_data.to_period(freqstr)
 
 if __name__ == "__main__":
     pass
