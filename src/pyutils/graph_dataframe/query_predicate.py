@@ -8,7 +8,6 @@ class BaseQueryPredicate:
         return pd.Series([False] * pdf.shape[0])
 
     def query_dataframe(self, pdf: pd.DataFrame) -> pd.DataFrame:
-        print("...")
         return pdf[self.evaluate_dataframe(pdf)].copy()
 
 class In (BaseQueryPredicate):
