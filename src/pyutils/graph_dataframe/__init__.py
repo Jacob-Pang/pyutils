@@ -193,12 +193,15 @@ class GraphDataFrame:
             partition_column_values = graph_schema.get_partition_column_values(partition_path)
 
             for query_predicate in query_predicates:
-                if not query_predicate(partition_column_values):
+                if not query_predicate.evaluate_column_values(partition_column_values):
                     return
 
             partition_file_path = self.get_data_file_path(from_file_path, partition_path)
             encoded_partition_pdf = self.read_data_from_file_path(partition_file_path)
             decoded_partition_pdf = graph_schema.dtype_schema.decode_dtype(encoded_partition_pdf)
+
+            for query_predicate in query_predicates:
+                decoded_partition_pdf = query_predicate.query_dataframe(decoded_partition_pdf)
 
             for column, column_value in partition_column_values.items():
                 decoded_partition_pdf[column] = column_value
