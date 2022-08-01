@@ -35,6 +35,7 @@ class Not (BaseQueryPredicate):
         return not self.query.evaluate_column_values(column_values)
     
     def evaluate_dataframe(self, pdf: pd.DataFrame) -> pd.DataFrame:
+        print(self.query.evaluate_dataframe(pdf))
         return -self.query.evaluate_dataframe(pdf)
 
 class GreaterThan (BaseQueryPredicate):
