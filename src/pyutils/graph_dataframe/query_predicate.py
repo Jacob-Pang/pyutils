@@ -8,7 +8,7 @@ class BaseQueryPredicate:
         return pd.Series([False] * pdf.shape[0])
 
     def query_dataframe(self, pdf: pd.DataFrame) -> pd.DataFrame:
-        return pdf[self.evaluate_dataframe(pdf)]
+        return pdf[self.evaluate_dataframe(pdf)].copy()
 
 class In (BaseQueryPredicate):
     def __init__(self, column: str, values: set):
@@ -35,7 +35,7 @@ class Not (BaseQueryPredicate):
         return not self.query.evaluate_column_values(column_values)
     
     def evaluate_dataframe(self, pdf: pd.DataFrame) -> pd.DataFrame:
-        return ~self.query.evaluate_dataframe(pdf)
+        return -self.query.evaluate_dataframe(pdf)
 
 class GreaterThan (BaseQueryPredicate):
     def __init__(self, column: str, value: any) -> None:
