@@ -211,6 +211,9 @@ class GraphDataFrame:
         for partition_path in graph_schema.partition_paths:
             query_partition(partition_path)
         
+        if not partition_pdfs:
+            return pd.DataFrame([], columns=graph_schema.dtype_schema.dtype_encoder_schema.keys())
+        
         return pd.concat(partition_pdfs, axis=0)
 
 if __name__ == "__main__":
