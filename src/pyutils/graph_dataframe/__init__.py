@@ -61,7 +61,7 @@ class GraphDataFrameSchema:
         self.partition_paths = set()
 
     def get_partition_path(self, partition_column_values: tuple = tuple()) -> str:
-        return os.path.sep.join([
+        return os.path.join(*[
             f"{column}={self.dtype_schema.get(column).to_string(column_value)}"
             for column, column_value in zip(self.partition_columns, partition_column_values)
         ])
@@ -86,9 +86,9 @@ class GraphDataFrame:
     @staticmethod
     def get_data_file_path(root_file_path: str, partition_path: str = None) -> str:
         if not partition_path:
-            return os.path.join([root_file_path, "_data.csv"])
+            return os.path.join(root_file_path, "_data.csv")
         
-        return os.path.join([root_file_path, partition_path, "_data.csv"])
+        return os.path.join(root_file_path, partition_path, "_data.csv")
 
     @staticmethod
     def concat_drop_duplicates(pdf: pd.DataFrame, other: pd.DataFrame) -> pd.DataFrame:
