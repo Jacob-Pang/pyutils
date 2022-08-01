@@ -7,9 +7,8 @@ import pandas as pd
 import pyutils.graph_dataframe.dtype_encoder as dtype_encoders
 
 DTYPE_ENCODERS = {
-    dtype_encoder() for _, dtype_encoder in inspect.getmembers(dtype_encoders)
-    if inspect.isclass(dtype_encoder) and
-    isinstance(dtype_encoder, dtype_encoders.BaseDtypeEncoder)
+    dtype_encoder() for _, dtype_encoder in inspect.getmembers(dtype_encoders, inspect.isclass)
+    if isinstance(dtype_encoder(), dtype_encoders.BaseDtypeEncoder)
 }
 
 class DtypeSchema:
