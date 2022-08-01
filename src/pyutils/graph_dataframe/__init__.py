@@ -193,7 +193,7 @@ class GraphDataFrame:
             partition_column_values = graph_schema.get_partition_column_values(partition_path)
 
             for query_predicate in query_predicates:
-                if not query_predicate.evaluate_column_values(partition_column_values):
+                if query_predicate.evaluate_column_values(partition_column_values) == False:
                     return
 
             partition_file_path = self.get_data_file_path(from_file_path, partition_path)
