@@ -194,7 +194,6 @@ class GraphDataFrame:
 
             for query_predicate in query_predicates:
                 if not query_predicate.evaluate_column_values(partition_column_values):
-                    print(query_predicate)
                     return
 
             partition_file_path = self.get_data_file_path(from_file_path, partition_path)
@@ -202,7 +201,6 @@ class GraphDataFrame:
             decoded_partition_pdf = graph_schema.dtype_schema.decode_dtype(encoded_partition_pdf)
 
             for query_predicate in query_predicates:
-                print(query_predicate.query_dataframe(decoded_partition_pdf))
                 decoded_partition_pdf = query_predicate.query_dataframe(decoded_partition_pdf)
 
             for column, column_value in partition_column_values.items():

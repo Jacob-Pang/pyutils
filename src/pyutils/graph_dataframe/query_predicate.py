@@ -1,8 +1,8 @@
 import pandas as pd
 
 class BaseQueryPredicate:
-    def evaluate_column_values(self, column_values: dict) -> bool:
-        return True
+    def evaluate_column_values(self, column_values: dict) -> (bool | None):
+        return None
     
     def evaluate_dataframe(self, pdf: pd.DataFrame) -> pd.DataFrame:
         return pd.Series([False] * pdf.shape[0])
@@ -16,11 +16,11 @@ class In (BaseQueryPredicate):
         self.column = column
         self.values = values
 
-    def evaluate_column_values(self, column_values: dict) -> bool:
+    def evaluate_column_values(self, column_values: dict) -> (bool | None):
         if self.column in column_values:
             return column_values.get(self.column) in self.values
         
-        return True
+        return None
     
     def evaluate_dataframe(self, pdf: pd.DataFrame) -> pd.DataFrame:
         if not self.column in pdf.columns:
@@ -32,15 +32,16 @@ class Not (BaseQueryPredicate):
     def __init__(self, query: BaseQueryPredicate) -> None:
         self.query = query
     
-    def evaluate_column_values(self, column_values: dict) -> bool:
-        return not self.query.evaluate_column_values(column_values)
+    def evaluate_column_values(self, column_values: dict) -> (bool | None):
+        query_result = self.query.evaluate_column_values(column_values)
+        if query_result is None: return None
+
+        return not query_result
     
     def evaluate_dataframe(self, pdf: pd.DataFrame) -> pd.DataFrame:
-        print(self.query.evaluate_dataframe(pdf))
         return -self.query.evaluate_dataframe(pdf)
 
     def query_dataframe(self, pdf: pd.DataFrame) -> pd.DataFrame:
-        print(">>")
         return super().query_dataframe(pdf)
 
 class GreaterThan (BaseQueryPredicate):
@@ -48,11 +49,11 @@ class GreaterThan (BaseQueryPredicate):
         self.column = column
         self.value = value
 
-    def evaluate_column_values(self, column_values: dict) -> bool:
+    def evaluate_column_values(self, column_values: dict) -> (bool | None):
         if self.column in column_values:
             return column_values.get(self.column) > self.value
         
-        return True
+        return None
     
     def evaluate_dataframe(self, pdf: pd.DataFrame) -> pd.DataFrame:
         if not self.column in pdf.columns:
@@ -65,11 +66,11 @@ class LesserThan (BaseQueryPredicate):
         self.column = column
         self.value = value
 
-    def evaluate_column_values(self, column_values: dict) -> bool:
+    def evaluate_column_values(self, column_values: dict) -> (bool | None):
         if self.column in column_values:
             return column_values.get(self.column) < self.value
         
-        return True
+        return None
     
     def evaluate_dataframe(self, pdf: pd.DataFrame) -> pd.DataFrame:
         if not self.column in pdf.columns:
