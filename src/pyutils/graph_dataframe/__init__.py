@@ -55,7 +55,7 @@ class DtypeSchema:
         return pdf
 
 class GraphDataFrameSchema:
-    def __init__(self, dtype_schema: DtypeSchema, partition_columns: tuple = tuple()) -> None:
+    def __init__(self, dtype_schema: DtypeSchema, partition_columns: list = list()) -> None:
         self.dtype_schema = dtype_schema
         self.partition_columns = partition_columns
         self.partition_paths = set()
@@ -100,13 +100,16 @@ class GraphDataFrame:
     def remove_file_path(self, file_path: str) -> None:
         shutil.rmtree(file_path)
 
-    def create_file_path(self, file_path: str) -> None:
-        os.makedirs(file_path)
-
     def save_data_to_file_path(self, pdf: pd.DataFrame, file_path: str) -> None:
+        if not self.file_path_exists(os.path.dirname(file_path)):
+            os.makedirs(os.path.dirname(file_path))
+        
         pdf.to_csv(file_path, index=True)
 
     def save_schema_to_file_path(self, graph_schema: GraphDataFrameSchema, file_path: str) -> None:
+        if not self.file_path_exists(os.path.dirname(file_path)):
+            os.makedirs(os.path.dirname(file_path))
+
         with open(file_path, "wb") as schema_file:
             cloudpickle.dump(graph_schema, schema_file, protocol=pickle.HIGHEST_PROTOCOL)
 
@@ -117,15 +120,14 @@ class GraphDataFrame:
         with open(file_path, "rb") as schema_file:
             return cloudpickle.load(schema_file)
 
-    def save_dataframe(self, pdf: pd.DataFrame, to_file_path: str, partition_columns: tuple = tuple()) -> None:
+    def save_dataframe(self, pdf: pd.DataFrame, to_file_path: str, partition_columns: list = list()) -> None:
         if self.file_path_exists(to_file_path):
             self.remove_file_path(to_file_path) # Remove existing dataframe graph
 
-        self.create_file_path(to_file_path)
         graph_schema = GraphDataFrameSchema(DtypeSchema(pdf), partition_columns)
 
         if partition_columns:
-            for partition_column_values, partition_pdf in pdf.groupby(partition_columns):
+            for partition_column_values, partition_pdf in pdf.groupby(by=partition_columns):
                 if not isinstance(partition_column_values, tuple):
                     partition_column_values = tuple([partition_column_values])
 
@@ -150,7 +152,7 @@ class GraphDataFrame:
         graph_schema = self.read_schema_from_file_path(self.get_schema_file_path(to_file_path))
         
         if graph_schema.partition_columns:
-            for partition_column_values, partition_pdf in pdf.groupby(graph_schema.partition_columns):
+            for partition_column_values, partition_pdf in pdf.groupby(by=graph_schema.partition_columns):
                 if not isinstance(partition_column_values, tuple):
                     partition_column_values = tuple([partition_column_values])
 
