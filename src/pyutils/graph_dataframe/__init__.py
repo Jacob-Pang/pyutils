@@ -100,6 +100,9 @@ class GraphDataFrame:
     def remove_file_path(self, file_path: str) -> None:
         shutil.rmtree(file_path)
 
+    def create_file_path(self, file_path: str) -> None:
+        os.makedirs(file_path)
+
     def save_data_to_file_path(self, pdf: pd.DataFrame, file_path: str) -> None:
         pdf.to_csv(file_path, index=True)
 
@@ -118,6 +121,7 @@ class GraphDataFrame:
         if self.file_path_exists(to_file_path):
             self.remove_file_path(to_file_path) # Remove existing dataframe graph
 
+        self.create_file_path(to_file_path)
         graph_schema = GraphDataFrameSchema(DtypeSchema(pdf), partition_columns)
 
         if partition_columns:
