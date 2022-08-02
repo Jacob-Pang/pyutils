@@ -53,7 +53,7 @@ class DateTimeDtypeEncoder (BaseDtypeEncoder):
                 else data.strftime(self.ENCODED_DATETIME_FORMAT)
     
     def decode_dtype(self, data: (int | str | float)) -> any:
-        pd.to_datetime(data, format=self.ENCODED_DATETIME_FORMAT)
+        return pd.to_datetime(data, format=self.ENCODED_DATETIME_FORMAT)
 
     def to_string(self, data: any) -> str:
         return self.encode_dtype(data)
