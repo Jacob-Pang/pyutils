@@ -1,6 +1,6 @@
 from github import AuthenticatedUser, Repository
 from pyutils.database.data_node import DataNode
-from pyutils.github_ops import address_exists, github_address, github_relative_path
+from pyutils.github_ops import github_relative_path
 from pyutils.github_ops.write_ops import delete_file
 
 class GitHubDataNode (DataNode):
@@ -38,8 +38,10 @@ class GitHubDataNode (DataNode):
         if not authenticated_repo:
             authenticated_repo = self.get_authenticated_repo()
 
-        if address_exists(github_address(authenticated_repo, self.get_node_path(), self.get_branch())):
+        # if address_exists(github_address(authenticated_repo, self.get_node_path(), self.get_branch())):
+        try: # cannot retrieve RT existence: wrap execution in try-catch
             delete_file(authenticated_repo, self.get_node_path(), self.get_branch(), commit_message)
+        except: pass
 
 if __name__ == "__main__":
     pass
