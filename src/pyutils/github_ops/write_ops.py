@@ -6,7 +6,7 @@ import pandas as pd
 from github import Repository
 from github import InputGitTreeElement
 from collections.abc import Iterable
-from pyutils.github_ops import address_exists, github_address, github_relative_path, repository_walk
+from pyutils.github_ops import github_relative_path, repository_walk
 
 def write_files(authenticated_repo: Repository, file_contents: Iterable, to_remote_file_paths: Iterable,
     branch: str = "main", commit_message: str = '', push_batch_size: int = 20) -> None:
@@ -33,10 +33,8 @@ def write_files(authenticated_repo: Repository, file_contents: Iterable, to_remo
     tree_elements, file_exceptions = [], []
 
     for file_content, remote_file_path in zip(file_contents, to_remote_file_paths):
-        try:
-            tree_elements.append(InputGitTreeElement(remote_file_path, "100644", "blob", file_content))
-        except:
-            file_exceptions.append((file_content, remote_file_path))
+        try:    tree_elements.append(InputGitTreeElement(remote_file_path, "100644", "blob", file_content))
+        except: file_exceptions.append((file_content, remote_file_path))
     
     if tree_elements:
         git_tree = authenticated_repo.create_git_tree(tree_elements, branch_tree)
@@ -45,10 +43,12 @@ def write_files(authenticated_repo: Repository, file_contents: Iterable, to_remo
         branch_reference.edit(commit.sha)
 
     for file_content, remote_file_path in file_exceptions:
-        if address_exists(github_address(authenticated_repo, remote_file_path, branch)):
+        # if address_exists(github_address(authenticated_repo, remote_file_path, branch)):
+        try: # cannot retrieve RT existence: wrap in try-catch execution
             authenticated_repo.delete_file(remote_file_path, commit_message, authenticated_repo
                     .get_contents(remote_file_path, ref=branch).sha, branch)
-        
+        except: pass
+
         authenticated_repo.create_file(remote_file_path, commit_message, file_content, branch)
 
 def push_files(authenticated_repo: Repository, from_local_file_paths: Iterable,
