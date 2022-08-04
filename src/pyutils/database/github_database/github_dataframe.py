@@ -4,7 +4,7 @@ from github import Repository
 from pyutils.database.dataframe import DataFrame, GraphDataFrame
 from pyutils.database.github_database.github_artifact import GitHubArtifact
 from pyutils.graph_dataframe import GraphDataFrameInterface, GraphDataFrameSchema
-from pyutils.github_ops import address_exists, get_repository, github_relative_path
+from pyutils.github_ops import address_exists, get_repository, github_relative_path, raw_github_address
 from pyutils.github_ops.read_ops import read_csv_to_pandas, read_pickle
 from pyutils.github_ops.write_ops import write_pandas_to_csv, write_pickle
 
@@ -18,7 +18,7 @@ class GitHubGraphDataFrameInterface (GraphDataFrameInterface):
         self.commit_message = commit_message
 
     def file_path_exists(self, file_path: str) -> bool:
-        return address_exists(github_relative_path(file_path))
+        return address_exists(raw_github_address(self.repository, github_relative_path(file_path), self.branch))
     
     def save_schema_to_file_path(self, graph_schema: GraphDataFrameSchema, file_path: str) -> None:
         write_pickle(graph_schema, self.repository, github_relative_path(file_path),
