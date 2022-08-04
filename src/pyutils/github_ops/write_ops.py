@@ -154,7 +154,7 @@ def write_pandas_to_csv(pdf: pd.DataFrame, authenticated_repo: Repository, to_re
     """
     file_content = io.StringIO()
     pdf.to_csv(file_content, **to_csv_kwargs)
-    write_files(authenticated_repo, [file_content.read()], [to_remote_file_path], branch, commit_message)
+    write_files(authenticated_repo, [file_content.getvalue()], [to_remote_file_path], branch, commit_message)
 
 def write_pickle(obj: object, authenticated_repo: Repository, to_remote_file_path: str, branch: str = "main",
     commit_message: str = '', pickle_dumps_fn: callable = pickle.dumps) -> None:
