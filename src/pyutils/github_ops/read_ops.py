@@ -7,7 +7,7 @@ import pandas as pd
 
 from github import Github, Repository
 from collections.abc import Iterable
-from pyutils.github_ops.common import get_repository, raw_github_link, repository_walk
+from pyutils.github_ops import get_repository, raw_github_address, repository_walk
 
 def read_file(user_name: str, repository_name: str, from_remote_file_path: str,
     branch: str = "main") -> any:
@@ -22,7 +22,7 @@ def read_file(user_name: str, repository_name: str, from_remote_file_path: str,
     Returns:
         file_content (any): The contents of the remote file in text or bytes.
     """
-    return requests.get(raw_github_link(user_name, repository_name,
+    return requests.get(raw_github_address(user_name, repository_name,
             from_remote_file_path, branch)).content
 
 def pull_directory(user_name: str, repository_name: str, from_remote_directory_path: str = "",
@@ -67,9 +67,9 @@ def pull_directory(user_name: str, repository_name: str, from_remote_directory_p
             file_output.write(file_content)
 
 # Read operations for specific classes
-def read_pickle(user_name: str, repository_name: str, from_remote_file_path: str,
-    branch: str = "main") -> any:
-    return pickle.loads(read_file(user_name, repository_name, from_remote_file_path, branch))
+def read_pickle(user_name: str, repository_name: str, from_remote_file_path: str, branch: str = "main",
+    pickle_loads_fn: callable = pickle.loads) -> any:
+    return pickle_loads_fn(read_file(user_name, repository_name, from_remote_file_path, branch))
 
 def read_csv_to_pandas(user_name: str, repository_name: str, from_remote_file_path: str,
     branch: str = "main", **read_csv_kwargs) -> pd.DataFrame:

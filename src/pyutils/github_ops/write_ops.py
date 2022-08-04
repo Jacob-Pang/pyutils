@@ -1,9 +1,12 @@
+import io
 import os
+import pickle
+import pandas as pd
 
 from github import Repository
 from github import InputGitTreeElement
 from collections.abc import Iterable
-from pyutils.github_ops.common import github_relative_path, repository_walk
+from pyutils.github_ops import github_relative_path, repository_walk
 
 def write_files(authenticated_repo: Repository, file_contents: Iterable,
     to_remote_file_paths: Iterable, branch: str = "main", commit_message: str = '',
@@ -102,8 +105,8 @@ def push_files(authenticated_repo: Repository, from_local_file_paths: Iterable,
         file_contents.append(get_local_file_contents(local_file_path, file_encoding))
         to_remote_file_paths.append(remote_file_path)
 
-    write_files(authenticated_repo, file_contents, to_remote_file_paths,
-            branch, commit_message, push_batch_size)
+    write_files(authenticated_repo, file_contents, to_remote_file_paths, branch,
+            commit_message, push_batch_size)
 
 def push_directory(authenticated_repo: Repository, from_local_directory_path: str = os.getcwd(),
     to_remote_directory_path: str = '', branch: str = "main", commit_message: str = "",
@@ -145,9 +148,24 @@ def delete_file(authenticated_repo: Repository, remote_file_path: str, branch: s
     commit_message: str = '') -> None:
     """
     """
+    
+
     for remote_file_content in repository_walk(authenticated_repo, remote_file_path, branch):
         authenticated_repo.delete_file(remote_file_content.path, commit_message,
                 remote_file_content.sha, branch)
+
+# Specialized operations
+def write_pandas_to_csv(pdf: pd.DataFrame, authenticated_repo: Repository, to_remote_file_path: str,
+    branch: str = "main", commit_message: str = '', **to_csv_kwargs) -> None:
+    """
+    """
+    file_content = io.StringIO()
+    pdf.to_csv(file_content, **to_csv_kwargs)
+    write_files(authenticated_repo, [file_content], [to_remote_file_path], branch, commit_message)
+
+def write_pickle(obj: object, authenticated_repo: Repository, to_remote_file_path: str, branch: str = "main",
+    commit_message: str = '', pickle_dumps_fn: callable = pickle.dumps) -> None:
+    write_files(authenticated_repo, [pickle_dumps_fn(obj)], [to_remote_file_path], branch, commit_message)
 
 if __name__ == "__main__":
     pass

@@ -1,7 +1,6 @@
 import pandas as pd
 
 from collections.abc import Iterable
-from pyutils.database.artifact import Artifact
 from pyutils.database.data_node import DataNode
 from pyutils.database.dataframe import DataFrame
 
@@ -14,11 +13,11 @@ class DataFrameTransformer (DataNode):
     def get_node_path(self) -> str:
         return None
     
-    def destroy_node(self, *args, **kwargs) -> None:
+    def destroy_node(self, **kwargs) -> None:
         return
 
-    def read_data(self, *args, **kwargs) -> any:
-        return self.connected_dataframe.read_data(*args, **kwargs)
+    def read_data(self, **kwargs) -> any:
+        return self.connected_dataframe.read_data(**kwargs)
 
     def __str__(self) -> str:
         return "TRANSFORMER"
@@ -45,11 +44,11 @@ class MapTransformer (DataFrameTransformer):
         self.value_field_name = value_field_name
         self.mapper = mapper
 
-    def get_mapper(self, *args, **kwargs) -> dict:
+    def get_mapper(self, **kwargs) -> dict:
         if isinstance(self.mapper, dict):
             return self.mapper
         
-        data = self.mapper.read_data(*args, **kwargs)
+        data = self.mapper.read_data(**kwargs)
 
         if isinstance(data, dict):
             return data
@@ -59,9 +58,9 @@ class MapTransformer (DataFrameTransformer):
         
         raise Exception()
     
-    def read_data(self, *args, **kwargs) -> pd.DataFrame:
-        pdf = DataFrameTransformer.read_data(self, *args, **kwargs)
-        pdf[:, self.value_field_name] = pdf[self.key_field_name].map(self.get_mapper(*args, **kwargs))
+    def read_data(self, **kwargs) -> pd.DataFrame:
+        pdf = DataFrameTransformer.read_data(self, **kwargs)
+        pdf[:, self.value_field_name] = pdf[self.key_field_name].map(self.get_mapper(**kwargs))
         
         return pdf
 
@@ -78,8 +77,8 @@ class GroupByTransformer (DataFrameTransformer):
         # Groupby.sum by default
         return pdf.sum()
         
-    def read_data(self, *args, **kwargs) -> pd.DataFrame:
-        pdf = DataFrameTransformer.read_data(self, *args, **kwargs)
+    def read_data(self, **kwargs) -> pd.DataFrame:
+        pdf = DataFrameTransformer.read_data(self, **kwargs)
         
         # Group dataframe by non-numeric fields
         groupby_field_names = self.groupby_field_names if self.groupby_field_names \

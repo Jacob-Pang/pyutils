@@ -1,6 +1,16 @@
 import inspect
 import sys
 
+def function_compat_kwargs(method: callable, **kwargs) -> dict:
+    if not kwargs: return kwargs
+    
+    keywords = [
+        *inspect.getfullargspec(method)[0],  # args
+        *inspect.getfullargspec(method)[4]   # kwonlyargs
+    ]
+
+    return {kw: arg for kw, arg in kwargs.items() if kw in keywords}
+
 class RedirectIOStream:
     """
     Notes:
@@ -32,17 +42,6 @@ class FunctionWrapper:
         self.wrapped_function = function
         self.default_kwargs = self.compatible_kwargs(**default_kwargs)
 
-    def compatible_kwargs(self, **kwargs) -> dict:
-        method_keywords = [
-            *inspect.getfullargspec(self.wrapped_function)[0],  # args
-            *inspect.getfullargspec(self.wrapped_function)[4]   # kwonlyargs
-        ]
-
-        return {
-            kw: arg for kw, arg in kwargs.items()
-            if kw in method_keywords
-        }
-
     def updated_kwargs(self, **kwargs) -> dict:
         for kw, arg in self.default_kwargs.items():
             if kw in kwargs:
@@ -51,7 +50,7 @@ class FunctionWrapper:
             # Set kwarg from default_kwargs
             kwargs[kw] = arg
 
-        return self.compatible_kwargs(**kwargs)
+        return function_compat_kwargs(self.wrapped_function, **kwargs)
 
     def __call__(self, *args, **kwargs) -> any:
         return self.wrapped_function(*args, **self.updated_kwargs(**kwargs))

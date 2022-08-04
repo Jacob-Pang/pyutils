@@ -1,46 +1,55 @@
+import cloudpickle
 import os
 import pandas as pd
 
 from collections.abc import Iterable
 from pyutils.database.data_node import DataNode
-from pyutils.database.artifact import CloudPickleFile
+from pyutils.database.artifact import PickleFile
 
 class DataBase (DataNode):
     @staticmethod
     def memory_file_name(data_node_id: str) -> str:
-        return f"{data_node_id}_dbase_memory"
+        return f"{data_node_id}_dbm"
 
     @staticmethod
     def restore_database(data_node_id: str, connection_dpath: str = os.getcwd()) -> DataNode:
-        database = CloudPickleFile(DataBase.memory_file_name(data_node_id), connection_dpath).read_data()
+        database = PickleFile(DataBase.memory_file_name(data_node_id), connection_dpath).read_data()
 
         for child_data_node_id, child_node in database.child_nodes.items():
+            if not isinstance(child_node, DataBase): continue
+
             # Lazy update of child databases
-            if isinstance(child_node, DataBase):
-                database.child_nodes[child_data_node_id] = DataBase.restore_database(
-                        child_data_node_id, child_node.connection_dpath)
+            child_database = DataBase.restore_database(child_data_node_id, child_node.connection_dpath)
+
+            if database.has_resident(child_database):
+                child_database.host_database = database
+
+            database.child_nodes[child_data_node_id] = child_database
         
         return database
 
-    def __init__(self, data_node_id: str, connection_dpath: str = os.getcwd(),
-        description: str = None, parent_database: any = None, **field_kwargs) -> None:
+    def __init__(self, data_node_id: str, connection_dpath: str = os.getcwd(), description: str = None,
+        host_database: any = None, **field_kwargs) -> None:
 
-        super().__init__(data_node_id, connection_dpath, description, parent_database, **field_kwargs)
+        super().__init__(data_node_id, connection_dpath, description, host_database, **field_kwargs)
         self.child_nodes = dict()
         self.add_memory_node()
         
     def add_memory_node(self) -> None:
-        memory_node = CloudPickleFile(DataBase.memory_file_name(self.data_node_id),
+        memory_node = PickleFile(DataBase.memory_file_name(self.data_node_id),
                 description="persistent database memory structure")
 
-        self.add_connected_child_node(memory_node)
+        self.add_resident_child_node(memory_node)
 
-    def save_database_memory(self, *args, **kwargs) -> None:
+    def save_database_memory(self, **kwargs) -> None:
         self.get_child_node(DataBase.memory_file_name(self.data_node_id)).save_data(
-                self, *args, **kwargs)
+                self, pickle_dump_fn=cloudpickle.dump, **kwargs)
 
     def autosave_database_memory(self) -> None:
         self.save_database_memory()
+
+    def has_resident(self, data_node: DataNode) -> bool:
+        return data_node.host_database and data_node.host_database.data_node_id == self.data_node_id
 
     def get_child_node(self, data_node_id: str, recursive: bool = True) -> any:
         if data_node_id in self.child_nodes:
@@ -56,10 +65,13 @@ class DataBase (DataNode):
 
         return None
 
-    def get_child_nodes(self, recursive: bool = False) -> set:
+    def get_child_nodes(self, resident_nodes_only: bool = False, recursive: bool = False) -> set:
         child_nodes = set()
 
         for child_node in self.child_nodes.values():
+            if resident_nodes_only and not self.has_resident(child_node):
+                continue
+
             child_nodes.add(child_node)
 
             if isinstance(child_node, DataBase) and recursive:
@@ -67,7 +79,7 @@ class DataBase (DataNode):
 
         return child_nodes
 
-    def get_connected_child_dpath(self, relative_dpath: str) -> str:
+    def get_resident_child_dpath(self, relative_dpath: str) -> str:
         if not relative_dpath:
             return self.connection_dpath
 
@@ -79,22 +91,20 @@ class DataBase (DataNode):
         self.child_nodes[data_node.data_node_id] = data_node
         self.autosave_database_memory()
 
-    def add_connected_child_node(self, data_node: DataNode, relative_dpath: str = '') -> None:
-        # Setup connection paths and ownership
-        data_node.connection_dpath = self.get_connected_child_dpath(relative_dpath)
-        data_node.parent_database = self
-
+    def add_resident_child_node(self, data_node: DataNode, relative_dpath: str = '') -> None:
+        data_node.connection_dpath = self.get_resident_child_dpath(relative_dpath)
+        data_node.host_database = self
         self.add_child_node(data_node)
 
-    def destroy_child_node(self, data_node_id: str, *args, **kwargs) -> None:
-        self.child_nodes.get(data_node_id).destroy_node(*args, **kwargs)
+    def destroy_child_node(self, data_node_id: str, **kwargs) -> None:
+        self.child_nodes.get(data_node_id).destroy_node(**kwargs)
         self.child_nodes.pop(data_node_id)
 
         self.autosave_database_memory()
 
-    def destroy_node(self, *args, **kwargs) -> None:
-        for child_node in self.child_nodes:
-            child_node.destroy_node(*args, **kwargs)
+    def destroy_node(self, resident_nodes_only: bool = False, **kwargs) -> None:
+        for child_node in self.get_child_nodes(resident_nodes_only, recursive=False):
+            child_node.destroy_node(**kwargs)
 
         self.autosave_database_memory()
 
@@ -106,8 +116,7 @@ class DataBase (DataNode):
         catalog = []
 
         for child_node in child_nodes:
-            node_fields = [child_node.data_node_id, str(child_node),
-                    child_node.description]
+            node_fields = [child_node.data_node_id, str(child_node), child_node.description]
 
             for lookup_field in lookup_fields:
                 node_fields.append(getattr(child_node, lookup_field)
@@ -115,8 +124,7 @@ class DataBase (DataNode):
 
             catalog.append(node_fields)
 
-        return pd.DataFrame(catalog, columns=["ID", "category",
-                "description", *lookup_fields])
+        return pd.DataFrame(catalog, columns=["ID", "category", "description", *lookup_fields])
         
 if __name__ == "__main__":
     pass

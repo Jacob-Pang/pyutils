@@ -78,7 +78,7 @@ class GraphDataFrameSchema:
 
         return partition_column_values
 
-class GraphDataFrame:
+class GraphDataFrameInterface:
     @staticmethod
     def get_schema_file_path(root_file_path: str) -> str:
         return os.path.sep.join([root_file_path, "_schema.cp"])
