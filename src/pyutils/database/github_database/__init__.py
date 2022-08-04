@@ -14,11 +14,11 @@ class GitHubDataBase (GitHubDataNode, DataBase):
             super().__init__("Cannot proceed without authentication: use <set_access_token> method.")
 
     @staticmethod
-    def restore_database(data_node_id: str, user_name: str, repository_name: str,
-        connection_dpath: str = '', branch: str = "main") -> GitHubDataNode:
+    def restore_database(data_node_id: str, user_name: str, repository_name: str, connection_dpath: str = '',
+        branch: str = "main") -> GitHubDataNode:
         from_remote_file_path = github_relative_path(f"{connection_dpath}/{DataBase.memory_file_name(data_node_id)}")
-        database = read_pickle(user_name, repository_name, from_remote_file_path, branch,
-                pickle_loads_fn=cloudpickle.loads)
+        repository = get_repository(user_name, repository_name)
+        database = read_pickle(repository, from_remote_file_path, branch, pickle_loads_fn=cloudpickle.loads)
 
         for child_data_node_id, child_node in database.child_nodes.items():
             # Lazy update of child databases

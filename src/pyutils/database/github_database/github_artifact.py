@@ -18,7 +18,7 @@ class GitHubArtifact (GitHubDataNode, Artifact):
         write_files(authenticated_repo, [artifact_data], [path], self.get_branch(), commit_message)
 
     def read_data_from_path(self, path: str, **kwargs) -> any:
-        return read_file(self.get_user_name(), self.get_repo_name(), path, self.get_branch())
+        return read_file(self.get_repository(), path, self.get_branch())
 
 class GitHubPickleFile (GitHubArtifact, PickleFile):
     def save_data_to_path(self, artifact_data: any, path: str, pickle_dumps_fn: callable = pickle.dumps,
@@ -30,7 +30,7 @@ class GitHubPickleFile (GitHubArtifact, PickleFile):
                 pickle_dumps_fn)
 
     def read_data_from_path(self, path: str, pickle_loads_fn: callable = pickle.loads, **kwargs) -> any:
-        return read_pickle(self.get_user_name(), self.get_repo_name(), path, self.get_branch(), pickle_loads_fn)
+        return read_pickle(self.get_repository(), path, self.get_branch(), pickle_loads_fn)
 
 if __name__ == "__main__":
     pass

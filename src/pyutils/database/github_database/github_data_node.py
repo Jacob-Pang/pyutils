@@ -38,8 +38,7 @@ class GitHubDataNode (DataNode):
         if not authenticated_repo:
             authenticated_repo = self.get_authenticated_repo()
 
-        if address_exists(github_address(self.get_user_name(), self.get_repo_name(), self.get_node_path(),
-            self.get_branch())):
+        if address_exists(github_address(authenticated_repo, self.get_node_path(), self.get_branch())):
             delete_file(authenticated_repo, self.get_node_path(), self.get_branch(), commit_message)
 
 if __name__ == "__main__":

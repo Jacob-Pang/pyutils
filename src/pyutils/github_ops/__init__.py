@@ -13,10 +13,14 @@ def get_authenticated_repository(repository_name: str, github_user: Github = Non
     
     return github_user.get_repo(repository_name)
 
-def github_address(user_name: str, repository_name: str, remote_file_path: str, branch: str = "main") -> str:
+def github_address(repository: Repository, remote_file_path: str, branch: str = "main") -> str:
+    user_name, repository_name = repository.owner.name, repository.name
+
     return f"https://github.com/{user_name}/{repository_name}/blob/{branch}/{remote_file_path}"
 
-def raw_github_address(user_name: str, repository_name: str, remote_file_path: str, branch: str = "main") -> str:
+def raw_github_address(repository: Repository, remote_file_path: str, branch: str = "main") -> str:
+    user_name, repository_name = repository.owner.name, repository.name
+
     return f"https://raw.githubusercontent.com/{user_name}/{repository_name}/{branch}/{remote_file_path}"
 
 def address_exists(address: str) -> bool:

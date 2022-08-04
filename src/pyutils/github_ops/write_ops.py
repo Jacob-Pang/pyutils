@@ -45,12 +45,7 @@ def write_files(authenticated_repo: Repository, file_contents: Iterable, to_remo
         branch_reference.edit(commit.sha)
 
     for file_content, remote_file_path in file_exceptions:
-        print(authenticated_repo.name)
-        print(authenticated_repo.owner.name)
-        print(file_content)
-        
-        if address_exists(github_address(authenticated_repo.name, authenticated_repo.owner.name,
-            remote_file_path, branch)):
+        if address_exists(github_address(authenticated_repo, remote_file_path, branch)):
             authenticated_repo.delete_file(remote_file_path, commit_message, authenticated_repo
                     .get_contents(remote_file_path, ref=branch).sha, branch)
         
@@ -159,9 +154,7 @@ def write_pandas_to_csv(pdf: pd.DataFrame, authenticated_repo: Repository, to_re
     """
     file_content = io.StringIO()
     pdf.to_csv(file_content, **to_csv_kwargs)
-
-    print(authenticated_repo)
-    write_files(authenticated_repo, [file_content], [to_remote_file_path], branch, commit_message)
+    write_files(authenticated_repo, [file_content.read()], [to_remote_file_path], branch, commit_message)
 
 def write_pickle(obj: object, authenticated_repo: Repository, to_remote_file_path: str, branch: str = "main",
     commit_message: str = '', pickle_dumps_fn: callable = pickle.dumps) -> None:
