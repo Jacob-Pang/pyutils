@@ -101,22 +101,26 @@ class GitHubDataBase (GitHubDataNode, DataBase):
         self.authenticated_repo = None
         self.repository = None
 
-    def save_database_memory(self, commit_message: str = '', save_child_nodes: bool = True, **kwargs) -> None:
+    def save_database_memory(self, commit_message: str = '', authenticated_repo: Repository = None,
+        save_child_nodes: bool = True, **kwargs) -> None:
         """
         Notes:
             method removes cached authenticated github objects before saving. User has to
                 provide access token again to re-authenticate in subsequent writes.
         """
+        if not authenticated_repo:
+            authenticated_repo = self.get_authenticated_repo()
+        
+        self.destroy_authentication_cache()
+
         for child_node in self.child_nodes.values():
             if isinstance(child_node, GitHubDataBase):
                 if save_child_nodes:
-                    child_node.save_database_memory(commit_message=commit_message,
-                            save_child_nodes=True, **kwargs)
-                
-                child_node.destroy_authentication_cache()
+                    child_node.save_database_memory(commit_message=commit_message, save_child_nodes=True,
+                            authenticated_repo=(authenticated_repo if self.has_resident(child_node) else None),
+                            **kwargs)
 
-        authenticated_repo = self.get_authenticated_repo()
-        self.destroy_authentication_cache()
+                child_node.destroy_authentication_cache()
 
         DataBase.save_database_memory(self, authenticated_repo=authenticated_repo,
                 commit_message=commit_message, **kwargs)
