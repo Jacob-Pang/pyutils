@@ -6,7 +6,7 @@ import pandas as pd
 from github import Repository
 from github import InputGitTreeElement
 from collections.abc import Iterable
-from pyutils.github_ops import github_relative_path, repository_walk
+from pyutils.github_ops import address_exists, github_address, github_relative_path, repository_walk
 
 def write_files(authenticated_repo: Repository, file_contents: Iterable, to_remote_file_paths: Iterable,
     branch: str = "main", commit_message: str = '', push_batch_size: int = 20) -> None:
@@ -45,11 +45,15 @@ def write_files(authenticated_repo: Repository, file_contents: Iterable, to_remo
         branch_reference.edit(commit.sha)
 
     for file_content, remote_file_path in file_exceptions:
-        try: # Remove existing file
+        print(authenticated_repo.name)
+        print(authenticated_repo.owner.name)
+        print(file_content)
+        
+        if address_exists(github_address(authenticated_repo.name, authenticated_repo.owner.name,
+            remote_file_path, branch)):
             authenticated_repo.delete_file(remote_file_path, commit_message, authenticated_repo
                     .get_contents(remote_file_path, ref=branch).sha, branch)
-        except: pass
-
+        
         authenticated_repo.create_file(remote_file_path, commit_message, file_content, branch)
 
 def push_files(authenticated_repo: Repository, from_local_file_paths: Iterable,
