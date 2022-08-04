@@ -8,25 +8,22 @@ from github import InputGitTreeElement
 from collections.abc import Iterable
 from pyutils.github_ops import github_relative_path, repository_walk
 
-def write_files(authenticated_repo: Repository, file_contents: Iterable,
-    to_remote_file_paths: Iterable, branch: str = "main", commit_message: str = '',
-    push_batch_size: int = 20) -> None:
+def write_files(authenticated_repo: Repository, file_contents: Iterable, to_remote_file_paths: Iterable,
+    branch: str = "main", commit_message: str = '', push_batch_size: int = 20) -> None:
     """ Commit and write files into remote GitHub repository
 
     Parameters:
         authenticated_repo (Repository): Authenticated repository object.
         file_contents (Iterable): The contents of the files to write.
-        to_remote_file_paths (Iterable): The relative file paths within
-                the remote repository to push for each file respectively.
+        to_remote_file_paths (Iterable): The relative file paths within the remote repository to push for each
+                file respectively.
         branch (str): The branch name to push to.
         commit_message (str): The commit message to use.
-        push_batch_size (int): The maximum number of files to push within
-                one commit, and partition the files by.
+        push_batch_size (int): The maximum number of files to push within one commit, and partition the files by.
     """
     if len(file_contents) > push_batch_size:
-        write_files(authenticated_repo, file_contents[push_batch_size:],
-                to_remote_file_paths[push_batch_size:], branch, commit_message,
-                push_batch_size)
+        write_files(authenticated_repo, file_contents[push_batch_size:], to_remote_file_paths[push_batch_size:],
+                branch, commit_message, push_batch_size)
         
         file_contents = file_contents[:push_batch_size]
         to_remote_file_paths = to_remote_file_paths[:push_batch_size]
@@ -37,8 +34,7 @@ def write_files(authenticated_repo: Repository, file_contents: Iterable,
 
     for file_content, remote_file_path in zip(file_contents, to_remote_file_paths):
         try:
-            tree_elements.append(InputGitTreeElement(remote_file_path,
-                    "100644", "blob", file_content))
+            tree_elements.append(InputGitTreeElement(remote_file_path, "100644", "blob", file_content))
         except:
             file_exceptions.append((file_content, remote_file_path))
     
@@ -148,8 +144,6 @@ def delete_file(authenticated_repo: Repository, remote_file_path: str, branch: s
     commit_message: str = '') -> None:
     """
     """
-    
-
     for remote_file_content in repository_walk(authenticated_repo, remote_file_path, branch):
         authenticated_repo.delete_file(remote_file_content.path, commit_message,
                 remote_file_content.sha, branch)
@@ -161,6 +155,8 @@ def write_pandas_to_csv(pdf: pd.DataFrame, authenticated_repo: Repository, to_re
     """
     file_content = io.StringIO()
     pdf.to_csv(file_content, **to_csv_kwargs)
+
+    print(authenticated_repo)
     write_files(authenticated_repo, [file_content], [to_remote_file_path], branch, commit_message)
 
 def write_pickle(obj: object, authenticated_repo: Repository, to_remote_file_path: str, branch: str = "main",

@@ -44,6 +44,7 @@ class GitHubDataFrame (GitHubArtifact, DataFrame):
         if not authenticated_repo:
             authenticated_repo = self.get_authenticated_repo()
 
+        print(authenticated_repo)
         write_pandas_to_csv(artifact_data, authenticated_repo, path, self.get_branch(),
                 commit_message, index=True)
 
