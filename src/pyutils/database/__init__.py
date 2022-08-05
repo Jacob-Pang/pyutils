@@ -30,15 +30,14 @@ class DataBase (DataNode):
 
     def __init__(self, data_node_id: str, connection_dpath: str = os.getcwd(), description: str = None,
         host_database: any = None, **field_kwargs) -> None:
-
         super().__init__(data_node_id, connection_dpath, description, host_database, **field_kwargs)
         self.child_nodes = dict()
         self.memory_file_node = self.init_memory_file_node()
         self.resync_memory_file_node()
     
     def init_memory_file_node(self) -> DataNode:
-        return PickleFile(DataBase.memory_file_name(self.data_node_id),
-                description="persistent database memory structure")
+        return PickleFile(DataBase.memory_file_name(self.data_node_id), description=
+                "persistent database memory structure")
 
     def resync_memory_file_node(self) -> None:
         self.memory_file_node.connection_dpath = self.connection_dpath
@@ -46,7 +45,7 @@ class DataBase (DataNode):
         
     def save_database_memory(self, **kwargs) -> None:
         self.resync_memory_file_node()
-        self.memory_file_node.save_data(pickle_dump_fn=cloudpickle.dump, **kwargs)
+        self.memory_file_node.save_data(self, pickle_dump_fn=cloudpickle.dump, **kwargs)
 
     def autosave_database_memory(self) -> None:
         self.save_database_memory()
