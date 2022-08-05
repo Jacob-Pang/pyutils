@@ -77,7 +77,7 @@ class PeriodDtypeEncoder (DateTimeDtypeEncoder):
             data, freqstr = data.split('=')
             return super().decode_dtype(data).to_period(freqstr)
 
-        freqstr = data.iloc[0].split('=')[1]
+        freqstr = data[0:1].to_list()[0].split('=')[1]
         data = data.str.rstrip(f"={freqstr}")
         decoded_data = super().decode_dtype(data)
 
