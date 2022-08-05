@@ -114,7 +114,6 @@ class PyTask (FunctionWrapper):
         
         return self.scheduled_timestamp == other.scheduled_timestamp
 
-
 def run_pytasks_scheduler(pytasks: Iterable, verbose: bool = True, **kwargs) -> None:
     pytasks = sorted(pytasks)
     heapq.heapify(pytasks)
