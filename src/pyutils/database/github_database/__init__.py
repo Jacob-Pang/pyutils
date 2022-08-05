@@ -69,11 +69,9 @@ class GitHubDataBase (GitHubDataNode, DataBase):
 
         super().__init__(data_node_id, connection_dpath, description, host_database, **field_kwargs)
 
-    def add_memory_node(self) -> None:
-        memory_node = GitHubPickleFile(DataBase.memory_file_name(self.data_node_id),
+    def init_memory_file_node(self) -> GitHubPickleFile:
+        return GitHubPickleFile(DataBase.memory_file_name(self.data_node_id),
                 description="persistent database memory structure")
-
-        self.add_resident_child_node(memory_node)
 
     def set_access_token(self, access_token: str) -> None:
         if self.host_database:
@@ -171,11 +169,6 @@ class GitHubDataBase (GitHubDataNode, DataBase):
 
     def save_database_memory(self, commit_message: str = '', authenticated_repo: Repository = None,
         save_child_nodes: bool = True, **kwargs) -> None:
-        """
-        Notes:
-            method removes cached authenticated github objects before saving. User has to
-                provide access token again to re-authenticate in subsequent writes.
-        """
         if not authenticated_repo:
             authenticated_repo = self.get_authenticated_repo()
         
