@@ -3,7 +3,7 @@ import sys
 
 def function_compat_kwargs(method: callable, **kwargs) -> dict:
     if not kwargs: return kwargs
-    
+
     keywords = [
         *inspect.getfullargspec(method)[0],  # args
         *inspect.getfullargspec(method)[4]   # kwonlyargs
@@ -38,9 +38,9 @@ class RedirectIOStream:
         sys.stdin  = self.origin_stdin
 
 class FunctionWrapper:
-    def __init__(self, function: callable, **default_kwargs):
-        self.wrapped_function = function
-        self.default_kwargs = self.compatible_kwargs(**default_kwargs)
+    def __init__(self, method: callable, **default_kwargs):
+        self.wrapped_function = method
+        self.default_kwargs = function_compat_kwargs(method, **default_kwargs)
 
     def updated_kwargs(self, **kwargs) -> dict:
         for kw, arg in self.default_kwargs.items():
