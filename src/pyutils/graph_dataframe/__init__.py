@@ -16,6 +16,10 @@ class DtypeSchema:
         def __init__(self, data: any) -> None:
             super().__init__(f"Could not find matching dtype encoder for data object {data}.")
 
+    class UnrecognizedColumnException (Exception):
+        def __init__(self, column: str) -> None:
+            super().__init__(f"Could not find {column} in saved schema.")
+
     def __init__(self, pdf: pd.DataFrame) -> None:
         self.dtype_encoder_schema = dict()
         self.index_dtype_encoder = None
@@ -49,12 +53,10 @@ class DtypeSchema:
 
     def decode_dtype(self, pdf: pd.DataFrame) -> pd.DataFrame:
         for column in pdf.columns:
-            try:
-                pdf[column] = self.dtype_encoder_schema.get(column).decode_dtype(pdf[column])
-            except Exception as e:
-                print(column)
-                print(pdf)
-                raise e
+            if column not in self.dtype_encoder_schema:
+                raise DtypeSchema.UnrecognizedColumnException(column)
+
+            pdf[column] = self.dtype_encoder_schema.get(column).decode_dtype(pdf[column])
         
         pdf.index = self.index_dtype_encoder.decode_dtype(pdf.index)
         return pdf
