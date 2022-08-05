@@ -122,8 +122,8 @@ class GitHubDataBase (GitHubDataNode, DataBase):
 
                 child_node.destroy_authentication_cache()
 
-        DataBase.save_database_memory(self, authenticated_repo=authenticated_repo,
-                commit_message=commit_message, **kwargs)
+        DataBase.save_database_memory(self, authenticated_repo=authenticated_repo, commit_message=
+                commit_message, **kwargs)
 
     def autosave_database_memory(self) -> None:
         pass # Does not perform auto save

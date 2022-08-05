@@ -6,7 +6,7 @@ import pandas as pd
 from github import Repository
 from github import InputGitTreeElement
 from collections.abc import Iterable
-from pyutils.github_ops import github_relative_path, repository_walk
+from pyutils.github_ops import file_path_exists, github_relative_path, repository_walk
 
 def write_files(authenticated_repo: Repository, file_contents: Iterable, to_remote_file_paths: Iterable,
     branch: str = "main", commit_message: str = '', push_batch_size: int = 20) -> None:
@@ -43,11 +43,9 @@ def write_files(authenticated_repo: Repository, file_contents: Iterable, to_remo
         branch_reference.edit(commit.sha)
 
     for file_content, remote_file_path in file_exceptions:
-        # if address_exists(github_address(authenticated_repo, remote_file_path, branch)):
-        try: # cannot retrieve RT existence: wrap in try-catch execution
+        if file_path_exists(authenticated_repo, remote_file_path, branch, use_github_api=True):
             authenticated_repo.delete_file(remote_file_path, commit_message, authenticated_repo
                     .get_contents(remote_file_path, ref=branch).sha, branch)
-        except: pass
 
         authenticated_repo.create_file(remote_file_path, commit_message, file_content, branch)
 
@@ -58,20 +56,16 @@ def push_files(authenticated_repo: Repository, from_local_file_paths: Iterable,
 
     Parameters:
         authenticated_repo (Repository): Authenticated repository object.
-        from_local_file_paths (Iterable): The local file paths of the files to be
-                committed and pushed.
-        to_remote_directory_paths (Iterable, str): The relative directory paths within
-                the remote repository to push for each file respectively.
-                If a single repository directory is given as a string,
-                all files will be pushed to this directory. An empty
-                directory path maps to the repository parent directory.
+        from_local_file_paths (Iterable): The local file paths of the files to be committed and pushed.
+        to_remote_directory_paths (Iterable, str): The relative directory paths within the remote repository
+                to push for each file respectively. If a single repository directory is given as a string,
+                all files will be pushed to this directory. An empty directory path maps to the repository
+                parent directory.
         branch (str): The branch name to push to.
         commit_message (str): The commit message to use.
-        file_encodings (Iterable, str): The encoding to use for reading the
-                file contents. If a single encoding is given as a string,
-                all files will be decoded using this encoding format.
-        push_batch_size (int): The maximum number of files to push within
-                one commit, and partition the files by.
+        file_encodings (Iterable, str): The encoding to use for reading the file contents. If a single encoding
+                is given as a string, all files will be decoded using this encoding format.
+        push_batch_size (int): The maximum number of files to push within one commit, and partition the files by.
     """
     def get_local_file_contents(local_file_path: str, file_encoding: str) -> any:
         try:
@@ -112,14 +106,12 @@ def push_directory(authenticated_repo: Repository, from_local_directory_path: st
     Parameters:
         authenticated_repo (Repository): Authenticated repository object.
         from_local_directory_path (str): The local directory path to be committed and pushed.
-        to_remote_directory_path (str): The relative directory path within the remote
-                repository to push the local directory to.
+        to_remote_directory_path (str): The relative directory path within the remote repository to push the
+                local directory to.
         branch (str): The branch name to push to.
         commit_message (str): The commit message to use.
-        timeout (int): The number of seconds to wait before terminating
-                https connection requests.
-        push_batch_size (int): The maximum number of files to push within
-                one commit, and partition the files by.
+        timeout (int): The number of seconds to wait before terminating https connection requests.
+        push_batch_size (int): The maximum number of files to push within one commit, and partition the files by.
     """
     from_local_file_paths, to_remote_directory_paths = [], []
 

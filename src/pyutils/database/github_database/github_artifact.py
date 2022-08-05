@@ -3,6 +3,7 @@ import pickle
 from github import Repository
 from pyutils.database.artifact import Artifact, PickleFile
 from pyutils.database.github_database.github_data_node import GitHubDataNode
+from pyutils.github_ops import has_authenticated
 from pyutils.github_ops.write_ops import write_files, write_pickle
 from pyutils.github_ops.read_ops import read_file, read_pickle
 
@@ -18,7 +19,8 @@ class GitHubArtifact (GitHubDataNode, Artifact):
         write_files(authenticated_repo, [artifact_data], [path], self.get_branch(), commit_message)
 
     def read_data_from_path(self, path: str, **kwargs) -> any:
-        return read_file(self.get_repository(), path, self.get_branch())
+        repository = self.get_repository()
+        return read_file(repository, path, self.get_branch(), use_github_api=has_authenticated(repository))
 
 class GitHubPickleFile (GitHubArtifact, PickleFile):
     def save_data_to_path(self, artifact_data: any, path: str, pickle_dumps_fn: callable = pickle.dumps,
@@ -30,7 +32,9 @@ class GitHubPickleFile (GitHubArtifact, PickleFile):
                 pickle_dumps_fn)
 
     def read_data_from_path(self, path: str, pickle_loads_fn: callable = pickle.loads, **kwargs) -> any:
-        return read_pickle(self.get_repository(), path, self.get_branch(), pickle_loads_fn)
+        repository = self.get_repository()
+        return read_pickle(self.get_repository(), path, self.get_branch(), pickle_loads_fn,
+                use_github_api=has_authenticated(repository))
 
 if __name__ == "__main__":
     pass

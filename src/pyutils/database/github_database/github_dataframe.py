@@ -4,7 +4,7 @@ from github import Repository
 from pyutils.database.dataframe import DataFrame, GraphDataFrame
 from pyutils.database.github_database.github_artifact import GitHubArtifact
 from pyutils.graph_dataframe import GraphDataFrameInterface, GraphDataFrameSchema
-from pyutils.github_ops import github_relative_path
+from pyutils.github_ops import file_path_exists, github_relative_path, has_authenticated
 from pyutils.github_ops.read_ops import read_csv_to_pandas, read_pickle
 from pyutils.github_ops.write_ops import delete_file, write_pandas_to_csv, write_pickle
 
@@ -18,11 +18,11 @@ class GitHubGraphDataFrameInterface (GraphDataFrameInterface):
         self.commit_message = commit_message
 
     def file_path_exists(self, file_path: str) -> bool:
-        return True # cannot retrieve RT existence: assume existence
+        return file_path_exists(self.repository, file_path, self.branch, use_github_api=
+                has_authenticated(self.repository))
 
     def remove_file_path(self, file_path: str) -> None:
-        try:    delete_file(self.repository, github_relative_path(file_path), self.branch, self.commit_message)
-        except: pass
+        delete_file(self.repository, github_relative_path(file_path), self.branch, self.commit_message)
     
     def save_schema_to_file_path(self, graph_schema: GraphDataFrameSchema, file_path: str) -> None:
         write_pickle(graph_schema, self.repository, github_relative_path(file_path),
@@ -33,10 +33,12 @@ class GitHubGraphDataFrameInterface (GraphDataFrameInterface):
                 self.commit_message, index=True)
 
     def read_schema_from_file_path(self, file_path: str) -> GraphDataFrameSchema:
-        return read_pickle(self.repository, github_relative_path(file_path), self.branch)
+        return read_pickle(self.repository, github_relative_path(file_path), self.branch,
+                use_github_api=has_authenticated(self.repository))
 
     def read_data_from_file_path(self, file_path: str) -> pd.DataFrame:
-        return read_csv_to_pandas(self.repository, github_relative_path(file_path), self.branch, index_col=0)
+        return read_csv_to_pandas(self.repository, github_relative_path(file_path), self.branch,
+                use_github_api=has_authenticated(self.repository), index_col=0)
 
 class GitHubDataFrame (GitHubArtifact, DataFrame):
     def save_data_to_path(self, artifact_data: pd.DataFrame, path: str, commit_message: str = '',
@@ -48,7 +50,9 @@ class GitHubDataFrame (GitHubArtifact, DataFrame):
                 commit_message, index=True)
 
     def read_data_from_path(self, path: str, **kwargs) -> any:
-        return read_csv_to_pandas(self.get_repository(), path, self.get_branch(), **kwargs)
+        repository = self.get_repository()
+        return read_csv_to_pandas(repository, path, self.get_branch(), use_github_api=
+                has_authenticated(repository), **kwargs)
 
 class GitHubGraphDataFrame (GitHubArtifact, GraphDataFrame):
     def save_data_to_path(self, artifact_data: pd.DataFrame, path: str, partition_columns: list = list(),
