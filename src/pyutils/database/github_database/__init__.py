@@ -17,7 +17,7 @@ class GitHubDataBase (GitHubDataNode, DataBase):
     def restore_database(data_node_id: str, user_name: str, repository_name: str, connection_dpath: str = '',
         branch: str = "main", sync_connected_databases: bool = True, host_database: any = None,
         repository: Repository = None) -> GitHubDataNode:
-        print(f"restoring {data_node_id}")
+        
         if not repository:
             repository = get_repository(repository_name, user_name)
         
