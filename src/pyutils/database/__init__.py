@@ -46,8 +46,7 @@ class DataBase (DataNode):
         
     def save_database_memory(self, **kwargs) -> None:
         self.resync_memory_file_node()
-        self.get_child_node(DataBase.memory_file_name(self.data_node_id)).save_data(
-                self, pickle_dump_fn=cloudpickle.dump, **kwargs)
+        self.memory_file_node.save_data(pickle_dump_fn=cloudpickle.dump, **kwargs)
 
     def autosave_database_memory(self) -> None:
         self.save_database_memory()
