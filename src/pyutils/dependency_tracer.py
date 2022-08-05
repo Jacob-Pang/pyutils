@@ -10,14 +10,15 @@ import types
 
 from collections.abc import Iterable
 
-def builtin(reference: (types.ModuleType | types.FunctionType | type)) -> bool:
+# python 3.10 type -> (types.ModuleType | types.FunctionType | type)
+def builtin(reference: type) -> bool:
     # Returns whether the reference object is built-in
     reference = inspect.getmodule(reference)
 
     return not hasattr(reference, "__file__") or reference.__name__ in sys.builtin_module_names \
             or reference is None
 
-def builtin_or_stdlib(reference: (types.ModuleType | types.FunctionType | type)) -> bool:
+def builtin_or_stdlib(reference: type) -> bool:
     # Returns whether the reference object is built-in or defined wihtin standard libraries.
     reference = inspect.getmodule(reference)
 
@@ -255,7 +256,7 @@ class DependencyGraphNode:
         for child_node in ast.iter_child_nodes(ast.parse(self.reduced_source_code)):
             trace_dependency_imports(child_node, ignore_uninstalled)
 
-    def get_source_code(self, unpacked_dependencies: set = set()) -> (str | None):
+    def get_source_code(self, unpacked_dependencies: set = set()) -> str:
         if self.module in self.dependency_graph.terminal_modules or builtin_or_stdlib(self.module):
             return None
         
@@ -292,8 +293,8 @@ class DependencyGraphNode:
 
         return source_code
 
-def mainify_dependencies(obj: (types.ModuleType | types.FunctionType | object),
-    dependency_graph: DependencyGraph = DependencyGraph(), unpacked_dependencies: set = set()) -> None:
+def mainify_dependencies(obj: object, dependency_graph: DependencyGraph = DependencyGraph(),
+    unpacked_dependencies: set = set()) -> None:
     """
     Constraints (caa. 11 July 2022):
     a. Mainified modules must not have circular dependencies (order of execution cannot be resolved)

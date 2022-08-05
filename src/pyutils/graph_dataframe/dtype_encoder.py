@@ -9,10 +9,10 @@ class BaseDtypeEncoder:
     def has_encoded_dtype(self, data: any) -> bool:
         return self.has_base_dtype(data)
 
-    def encode_dtype(self, data: any) -> (int | str | float):
+    def encode_dtype(self, data: any) -> any:
         return data
     
-    def decode_dtype(self, data: (int | str | float)) -> any:
+    def decode_dtype(self, data: any) -> any:
         return data
 
     def to_string(self, data: any) -> str:
@@ -48,11 +48,11 @@ class DateTimeDtypeEncoder (BaseDtypeEncoder):
     def has_base_dtype(self, data: any) -> bool:
         return is_datetime64_any_dtype(data)
 
-    def encode_dtype(self, data: any) -> (int | str | float):
+    def encode_dtype(self, data: any) -> any:
         return data.dt.strftime(self.ENCODED_DATETIME_FORMAT) if isinstance(data, pd.Series) \
                 else data.strftime(self.ENCODED_DATETIME_FORMAT)
     
-    def decode_dtype(self, data: (int | str | float)) -> any:
+    def decode_dtype(self, data: any) -> any:
         return pd.to_datetime(data, format=self.ENCODED_DATETIME_FORMAT)
 
     def to_string(self, data: any) -> str:
@@ -65,14 +65,14 @@ class PeriodDtypeEncoder (DateTimeDtypeEncoder):
     def has_base_dtype(self, data: any) -> bool:
         return is_period_dtype(data)
     
-    def encode_dtype(self, data: any) -> (int | str | float):
+    def encode_dtype(self, data: any) -> any:
         freqstr = data.dt.freq.freqstr if isinstance(data, pd.Series) else data.freqstr
         datetime_data = data.dt.to_timestamp() if isinstance(data, pd.Series) else data.to_timestamp()
         encoded_data = super().encode_dtype(datetime_data)
 
         return encoded_data + f"={freqstr}"
 
-    def decode_dtype(self, data: (int | str | float)) -> pd.Period:
+    def decode_dtype(self, data: any) -> pd.Period:
         if isinstance(data, str):
             data, freqstr = data.split('=')
             return super().decode_dtype(data).to_period(freqstr)

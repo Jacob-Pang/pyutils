@@ -1,7 +1,7 @@
 import pandas as pd
 
 class BaseQueryPredicate:
-    def evaluate_column_values(self, column_values: dict) -> (bool | None):
+    def evaluate_column_values(self, column_values: dict) -> bool:
         return None
     
     def evaluate_dataframe(self, pdf: pd.DataFrame) -> pd.DataFrame:
@@ -15,7 +15,7 @@ class In (BaseQueryPredicate):
         self.column = column
         self.values = values
 
-    def evaluate_column_values(self, column_values: dict) -> (bool | None):
+    def evaluate_column_values(self, column_values: dict) -> bool:
         if self.column in column_values:
             return column_values.get(self.column) in self.values
         
@@ -31,7 +31,7 @@ class Not (BaseQueryPredicate):
     def __init__(self, query: BaseQueryPredicate) -> None:
         self.query = query
     
-    def evaluate_column_values(self, column_values: dict) -> (bool | None):
+    def evaluate_column_values(self, column_values: dict) -> bool:
         query_result = self.query.evaluate_column_values(column_values)
         if query_result is None: return None
 
@@ -48,7 +48,7 @@ class GreaterThan (BaseQueryPredicate):
         self.column = column
         self.value = value
 
-    def evaluate_column_values(self, column_values: dict) -> (bool | None):
+    def evaluate_column_values(self, column_values: dict) -> bool:
         if self.column in column_values:
             return column_values.get(self.column) > self.value
         
@@ -65,7 +65,7 @@ class LesserThan (BaseQueryPredicate):
         self.column = column
         self.value = value
 
-    def evaluate_column_values(self, column_values: dict) -> (bool | None):
+    def evaluate_column_values(self, column_values: dict) -> bool:
         if self.column in column_values:
             return column_values.get(self.column) < self.value
         
