@@ -49,7 +49,12 @@ class DtypeSchema:
 
     def decode_dtype(self, pdf: pd.DataFrame) -> pd.DataFrame:
         for column in pdf.columns:
-            pdf[column] = self.dtype_encoder_schema.get(column).decode_dtype(pdf[column])
+            try:
+                pdf[column] = self.dtype_encoder_schema.get(column).decode_dtype(pdf[column])
+            except Exception as e:
+                print(column)
+                print(pdf)
+                raise e
         
         pdf.index = self.index_dtype_encoder.decode_dtype(pdf.index)
         return pdf
