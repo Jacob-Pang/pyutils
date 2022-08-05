@@ -24,8 +24,14 @@ class GitHubDataBase (GitHubDataNode, DataBase):
             # Lazy update of child databases
             if isinstance(child_node, GitHubDataBase):
                 database.child_nodes[child_data_node_id] = GitHubDataBase.restore_database(
-                        child_data_node_id, child_node.user_name, child_node.repository_name,
-                        child_node.connection_dpath, child_node.branch)
+                        child_data_node_id, child_node.get_user_name(), child_node.get_repo_name(),
+                        child_node.connection_dpath, child_node.get_branch())
+
+        # Lazy update of host database
+        if database.host_database:
+            database.host_database = GitHubDataBase.restore_database(database.host_database.data_node_id,
+                    database.host_database.get_user_name(), database.host_database.get_repo_name(),
+                    database.host_database.connection_dpath, database.host_database.get_branch())
         
         return database
 
@@ -186,6 +192,9 @@ class GitHubDataBase (GitHubDataNode, DataBase):
     def add_resident_child_node(self, data_node: DataNode, relative_dpath: str = '') -> None:
         if isinstance(data_node, GitHubDataBase):
             data_node.destroy_authentication_cache()
+            data_node.user_name = self.user_name
+            data_node.repository_name = self.repository_name
+            data_node.branch = self.branch
 
         return super().add_resident_child_node(data_node, relative_dpath)
 
