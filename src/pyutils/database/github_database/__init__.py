@@ -15,28 +15,46 @@ class GitHubDataBase (GitHubDataNode, DataBase):
 
     @staticmethod
     def restore_database(data_node_id: str, user_name: str, repository_name: str, connection_dpath: str = '',
-        branch: str = "main") -> GitHubDataNode:
+        branch: str = "main", sync_connected_databases: bool = True, host_database: any = None,
+        repository: Repository = None) -> GitHubDataNode:
+        print(f"restoring {data_node_id}")
+        if not repository:
+            repository = get_repository(repository_name, user_name)
+        
         from_remote_file_path = github_relative_path(f"{connection_dpath}/{DataBase.memory_file_name(data_node_id)}")
-        repository = get_repository(repository_name, user_name)
         database = read_pickle(repository, from_remote_file_path, branch, pickle_loads_fn=cloudpickle.loads)
 
+        if not sync_connected_databases:
+            return database
+        
         for child_data_node_id, child_node in database.child_nodes.items():
             # Lazy update of child databases
             if isinstance(child_node, GitHubDataBase):
                 database.child_nodes[child_data_node_id] = GitHubDataBase.restore_database(
-                        child_data_node_id, child_node.get_user_name(), child_node.get_repo_name(),
-                        child_node.connection_dpath, child_node.get_branch())
+                    child_data_node_id, child_node.get_user_name(), child_node.get_repo_name(),
+                    child_node.connection_dpath, child_node.get_branch(),
+                    sync_connected_databases=True,
+                    host_database=(database if database.has_resident(child_node) else None),
+                    repository=(repository if database.has_resident(child_node) else None)
+                )
 
         # Lazy update of host database
-        if database.host_database:
-            database.host_database = GitHubDataBase.restore_database(database.host_database.data_node_id,
-                    database.host_database.get_user_name(), database.host_database.get_repo_name(),
-                    database.host_database.connection_dpath, database.host_database.get_branch())
+        if host_database:
+            database.host_database = host_database
+        elif database.host_database:
+            host_database = GitHubDataBase.restore_database(
+                database.host_database.data_node_id, database.host_database.get_user_name(),
+                database.host_database.get_repo_name(), database.host_database.connection_dpath,
+                database.host_database.get_branch(), sync_connected_databases=False,
+                repository=repository)
+
+            host_database.child_nodes[database.data_node_id] = database
+            database.host_database = host_database
         
         return database
 
-    def __init__(self, data_node_id: str, user_name: str, repository_name: str, branch: str = "main",
-        access_token: str = None, authenticated_user: AuthenticatedUser = None,
+    def __init__(self, data_node_id: str, user_name: str = None, repository_name: str = None,
+        branch: str = "main", access_token: str = None, authenticated_user: AuthenticatedUser = None,
         authenticated_repo: Repository = None, request_timeout: int = 15, connection_dpath: str = '',
         description: str = None, host_database: any = None, **field_kwargs) -> None:
 
