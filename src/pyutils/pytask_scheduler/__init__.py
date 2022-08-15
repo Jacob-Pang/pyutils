@@ -95,6 +95,7 @@ class PyTask (FunctionWrapper):
             gate.complete_requests(self.task_id, gate_usage)
         
         if reschedule_task:
+            print("rescheduled??")
             self.scheduled_timestamp = time.time() + (
                 max(self.freq - execution_time, 5) if task_success else 10
             )
