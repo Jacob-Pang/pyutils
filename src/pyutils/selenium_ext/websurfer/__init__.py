@@ -65,6 +65,10 @@ def busy_waiting_execution(method, wrap_output_types: any = None) -> callable:
     return wrapped_method
 
 class WebsurferBase(webdriver.Chrome, webdriver.Firefox):
+    @staticmethod
+    def default_websurfer():
+        raise NotImplementedError()
+
     @auto_update_driver
     def __init__(self, driver, service_construct, options, *option_args,
         driver_file_path: str = None, preferences: dict = None) -> None:

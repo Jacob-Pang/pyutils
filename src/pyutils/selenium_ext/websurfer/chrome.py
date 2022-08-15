@@ -13,6 +13,10 @@ class ChromeSurfer(WebsurferBase):
         return "--headless", "--disable-gpu", "--window-size=1920,1200", "--ignore-certificate-errors", \
             "--disable-extensions", "--no-sandbox", "--disable-dev-shm-usage"
         
+    @staticmethod
+    def default_websurfer() -> WebsurferBase:
+        return ChromeSurfer(*ChromeSurfer.default_headless_option_args())
+
     def __init__(self, *option_args, preferences: dict = None):
         WebsurferBase.__init__(
             self, webdriver.Chrome,
