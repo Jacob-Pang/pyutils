@@ -10,7 +10,7 @@ from collections.abc import Iterable
 DEFAULT_DRIVER_DPATH = os.path.join(Path(__file__).parent.parent.absolute(), "drivers")
 
 def auto_update_driver(method: callable):
-    def wrapped_method(self: WebsurferBase, *args, **kwargs) -> any:
+    def wrapped_method(self, *args, **kwargs) -> any:
         try:    return method(self, *args, **kwargs)
         except: pass
 
