@@ -85,7 +85,7 @@ class WebsurferBase(webdriver.Chrome, webdriver.Firefox):
                 "prefs", preferences
             )
 
-        driver.__init__(self, service=service_construct(self.driver_file_path, options=options))
+        driver.__init__(self, service=service_construct(self.driver_file_path), options=options)
         wrap_methods(self, busy_waiting_execution, wrap_output_types=WebElement)
 
     def __enter__(self):
