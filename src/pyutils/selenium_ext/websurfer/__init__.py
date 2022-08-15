@@ -7,14 +7,14 @@ from selenium.webdriver.remote.webelement import WebElement
 from selenium.webdriver.common.action_chains import ActionChains
 from collections.abc import Iterable
 
-DRIVER_DPATH = os.path.join(Path(__file__).parent.parent.absolute(), "drivers")
+DEFAULT_DRIVER_DPATH = os.path.join(Path(__file__).parent.parent.absolute(), "drivers")
 
 def auto_update_driver(method: callable):
-    def wrapped_method(self, *args, **kwargs) -> any:
+    def wrapped_method(self: WebsurferBase, *args, **kwargs) -> any:
         try:    return method(self, *args, **kwargs)
         except: pass
 
-        self.update_driver()
+        self.update_driver(os.path.dirname(self.driver_file_path))
         return method(self, *args, **kwargs)
 
     return wrapped_method
@@ -67,7 +67,15 @@ def busy_waiting_execution(method, wrap_output_types: any = None) -> callable:
 class WebsurferBase(webdriver.Chrome, webdriver.Firefox):
     @auto_update_driver
     def __init__(self, driver, service_construct, options, *option_args,
-        preferences: dict = None) -> None:
+        driver_file_path: str = None, preferences: dict = None) -> None:
+        """
+        Parameters:
+            driver (type): The class of the underlying webdriver.
+            ...
+            driver_path (str, opt): The directory path where the driver executable is stored.
+        """
+        self.driver_file_path = driver_file_path if driver_file_path else \
+                os.path.join(DEFAULT_DRIVER_DPATH, f"{self.driver_executable_name()}.exe")
 
         for arg in option_args:
             options.add_argument(arg)
@@ -77,7 +85,7 @@ class WebsurferBase(webdriver.Chrome, webdriver.Firefox):
                 "prefs", preferences
             )
 
-        driver.__init__(self, service=service_construct(self.driver_path()), options=options)
+        driver.__init__(self, service=service_construct(self.driver_file_path, options=options))
         wrap_methods(self, busy_waiting_execution, wrap_output_types=WebElement)
 
     def __enter__(self):
@@ -85,9 +93,6 @@ class WebsurferBase(webdriver.Chrome, webdriver.Firefox):
 
     def __exit__(self, *args) -> None:
         return self.quit()
-
-    def driver_path(self):
-        return os.path.join(DRIVER_DPATH, f"{self.driver_executable_name()}.exe")
 
     def driver_executable_name(self) -> str:
         raise NotImplementedError()

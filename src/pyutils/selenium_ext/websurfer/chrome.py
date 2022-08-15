@@ -5,7 +5,6 @@ import zipfile
 
 from selenium import webdriver
 
-from pyutils.selenium_ext.websurfer import DRIVER_DPATH
 from pyutils.selenium_ext.websurfer import WebsurferBase
 
 class ChromeSurfer(WebsurferBase):
@@ -27,7 +26,7 @@ class ChromeSurfer(WebsurferBase):
         return "chromedriver"
 
     @staticmethod
-    def update_driver(version = None, os_type: str = "win32"):
+    def update_driver(driver_dpath: str, version = None, os_type: str = "win32"):
         if not version:
             version = requests.get("https://chromedriver.storage.googleapis.com/LATEST_RELEASE").text
         
@@ -36,11 +35,11 @@ class ChromeSurfer(WebsurferBase):
             "chromedriver.zip"
         )
 
-        if not os.path.exists(DRIVER_DPATH):
-            os.makedirs(DRIVER_DPATH)
+        if not os.path.exists(driver_dpath):
+            os.makedirs(driver_dpath)
 
         with zipfile.ZipFile(chromedriver_zip, "r") as zip:
-            zip.extractall(DRIVER_DPATH)
+            zip.extractall(driver_dpath)
 
         os.remove(chromedriver_zip)
 
