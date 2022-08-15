@@ -45,6 +45,7 @@ class PyTask (FunctionWrapper):
 
     def __call__(self, *args, **kwargs) -> any:
         allocated_gates = dict()
+        self.scheduled_timestamp = None # Reset
 
         for request_provider, requests in self.request_provider_usage.items():
             gate, timestamp = request_provider.get_next_available_timestamp(requests)
@@ -95,7 +96,6 @@ class PyTask (FunctionWrapper):
             gate.complete_requests(self.task_id, gate_usage)
         
         if reschedule_task:
-            print("rescheduled??")
             self.scheduled_timestamp = time.time() + (
                 max(self.freq - execution_time, 5) if task_success else 10
             )
