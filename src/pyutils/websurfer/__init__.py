@@ -12,7 +12,7 @@ class Identifier:
 class XPathIdentifier (Identifier):
     pass
 
-class CSSIdentifier (Identifier):
+class CssSelectorIdentifier (Identifier):
     pass
 
 class WebsurferBase:
