@@ -4,21 +4,16 @@ import wget
 import zipfile
 
 from selenium import webdriver
+from pyutils.websurfer.selenium_ext import WebdriverBase
 
-from pyutils.selenium_ext.websurfer import WebsurferBase
-
-class ChromeSurfer(WebsurferBase):
+class ChromeWebdriver(WebdriverBase):
     @staticmethod
     def default_headless_option_args() -> tuple:
         return "--headless", "--disable-gpu", "--window-size=1920,1200", "--ignore-certificate-errors", \
             "--disable-extensions", "--no-sandbox", "--disable-dev-shm-usage"
-        
-    @staticmethod
-    def default_websurfer() -> WebsurferBase:
-        return ChromeSurfer(*ChromeSurfer.default_headless_option_args())
 
     def __init__(self, *option_args, preferences: dict = None):
-        WebsurferBase.__init__(
+        WebdriverBase.__init__(
             self, webdriver.Chrome,
             webdriver.chrome.service.Service,
             webdriver.ChromeOptions(),
