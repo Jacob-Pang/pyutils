@@ -8,7 +8,7 @@ from pyutils.io_utils import temporary_print, flush_temporary_lines
 
 class PyTask (FunctionWrapper):
     def __init__(self, function: callable, task_id: str = None, scheduled_timestamp: int = time.time(),
-        freq: int = 0, task_count: int = None, max_retries: int = 0, request_provider_usage: dict = {},
+        freq: int = 0, task_count: int = 1, max_retries: int = 0, request_provider_usage: dict = {},
         **default_kwargs):
         """
         Parameters:
@@ -83,7 +83,7 @@ class PyTask (FunctionWrapper):
 
             # Reschedule only where the following conditions are met:
             reschedule_task = reschedule_task and self.task_count != 0
-            
+
             # Reset tracking stats
             self.completed_count += 1
             self.retry_count = 0
