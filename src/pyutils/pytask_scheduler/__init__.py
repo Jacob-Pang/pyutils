@@ -142,9 +142,10 @@ def run_pytasks_scheduler(pytasks: Iterable, verbose: bool = True, **kwargs) -> 
     
     request_providers = list(request_providers)
 
-    def print_scheduler_state(running_pytask: PyTask = None) -> str:
+    def print_scheduler_state() -> str:
         temporary_print(
             f"SCHEDULER_TIME : {time.time()}\n" + \
+            f"PROCESSES : 1\n\n" + \
             "REQUEST_PROVIDER_LIST\n" + \
             "==========================================================================================================\n" + \
             "\n".join([ str(request_provider) for request_provider in request_providers ]) + "\n\n" + \
