@@ -18,6 +18,11 @@ class RequestProviderGate:
         self.requests_in_progress = dict() # request_id: requests
         self.requests_history = [] # (timestamp, requests)
 
+        self.cached_usage_stats = {
+            (usage_capacity, usage_window): 0
+            for usage_capacity, usage_window in usage_limits
+        }
+
     def get_requests_in_progress_count(self) -> int:
         return sum(self.requests_in_progress.values())
 
@@ -44,6 +49,7 @@ class RequestProviderGate:
                 if timestamp < boundary: break
                 used_capacity += requests
             
+            self.cached_usage_stats[(usage_capacity, usage_window)] = used_capacity
             return max(usage_capacity - used_capacity, 0)
 
         return min([
@@ -96,13 +102,23 @@ class RequestProviderGate:
 
     def __hash__(self) -> int:
         return self.gate_id.__hash__()
+
+    def __str__(self) -> str:
+        # Returns breakdown of usage
+        return "\n".join([
+            f"GATE {self.gate_id:<15} [ WINDOW : {usage_window:<5} USAGE : {used_capacity:>5}/{usage_capacity:<5} ]"
+            for (usage_capacity, usage_window), used_capacity in self.cached_usage_stats.items()
+        ])
     
 class RequestProvider:
-    def __init__(self, usage_limits: Iterable) -> None:
+    def __init__(self, usage_limits: Iterable, provider_id: str = None) -> None:
         """
         Parameters:
             usage_limits (Iterable): Collection of (usage_capacity, usage_window).
         """
+        if not provider_id: provider_id = f"provider_{int(time.time())}_{int(random.random() * 1e5)}"
+
+        self.provider_id = provider_id
         self.usage_limits = usage_limits
         self.gates = set()
     
@@ -119,6 +135,13 @@ class RequestProvider:
                 min_gate, min_timestamp = gate, timestamp
         
         return min_gate, min_timestamp
+
+    def __hash__(self) -> int:
+        return self.provider_id.__hash__()
+
+    def __str__(self) -> str:
+        # Returns breakdown of gates and usage capacity
+        return f"PROVIDER {self.provider_id}\n" + "\n".join([ str(gate) for gate in self.gates ])
 
 if __name__ == "__main__":
     pass

@@ -42,6 +42,7 @@ class PyTask (FunctionWrapper):
 
         self.retry_count = 0
         self.blocked_count = 0
+        self.completed_count = 0
 
     def __call__(self, *args, **kwargs) -> any:
         allocated_gates = dict()
@@ -100,10 +101,11 @@ class PyTask (FunctionWrapper):
             self.scheduled_timestamp = time.time() + (
                 max(self.freq - execution_time, 0) if task_success else 10
             )
-                
-        # Reset tracking parameters.
-        self.blocked_count = 0
-        self.retry_count = 0
+
+        if task_success:
+            self.completed_count += 1
+            self.retry_count = 0
+            self.blocked_count = 0
 
         return task_success
 
@@ -116,9 +118,43 @@ class PyTask (FunctionWrapper):
         
         return self.scheduled_timestamp == other.scheduled_timestamp
 
+    def __str__(self) -> str:
+        if not self.scheduled_timestamp:
+            state = "COMPLETED"
+        elif self.blocked_count:
+            state = f"BLOCKED ({self.blocked_count})"
+        elif self.retry_count:
+            state = f"FAILED ({self.retry_count})"
+        else:
+            state = f"READY"
+
+        return f"PYTASK {self.task_id:<15} [ STATUS : {state:<15}] SCHEDULED : {self.scheduled_timestamp:<15}" + \
+                f" COMPLETED : {self.completed_count:<4} ]"
+
 def run_pytasks_scheduler(pytasks: Iterable, verbose: bool = True, **kwargs) -> None:
     pytasks = sorted(pytasks)
+
+    # Compile request providers
+    request_providers = set()
+
+    for pytask in pytasks:
+        for request_provider in pytask.request_provider_usage:
+            request_providers.add(request_provider)
+    
+    request_providers = list(request_providers)
+
+    def get_scheduler_state(end: str = '\r') -> str:
+        return f"TIME : {time.time()}\n" + \
+            "REQUEST_PROVIDER_LIST\n" + \
+            "==============================================================================================\n" + \
+            "\n".join([ str(request_provider) for request_provider in request_providers ]) + "\n\n" + \
+            "PYTASK_LIST\n" + \
+            "==============================================================================================\n" + \
+            "\n".join([ str(pytask) for pytask in pytasks ]) + "\n" + \
+            "\n".join([ str(pytask) for pytask in completed_pytasks ])
+
     heapq.heapify(pytasks)
+    completed_pytasks = []
 
     while pytasks:
         pytask = heapq.heappop(pytasks)
@@ -126,16 +162,20 @@ def run_pytasks_scheduler(pytasks: Iterable, verbose: bool = True, **kwargs) -> 
         while pytask.scheduled_timestamp > time.time():
             time.sleep(1) # Busy waiting
 
-        task_success = pytask(**kwargs)
-
-        if task_success and verbose:
-            print(f"{int(time.time())}: successfully completed {pytask.task_id}.")
+        try:
+            pytask(**kwargs)
+        except Exception as exception:
+            print(get_scheduler_state())
+            raise exception
 
         if pytask.scheduled_timestamp: # Has rescheduled timing
             heapq.heappush(pytasks, pytask) # Requeue
+        else:
+            completed_pytasks.append(pytask)
 
-            if verbose:
-                print(f"{int(time.time())}: {pytask.task_id} rescheduled at {int(pytask.scheduled_timestamp)}.")
+        if verbose:
+            print(get_scheduler_state(), end='\r')
+            
 
 if __name__ == "main":
     pass
