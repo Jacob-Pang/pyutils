@@ -84,7 +84,8 @@ class PyTask (FunctionWrapper):
             # 1. frequency has been defined.
             # 2. task_count has not been defined (None) or task_count is greater than 0.
             # 3. task_output has not been defined (None) or task_output is True.
-            reschedule_task = reschedule_task and self.freq and (self.task_count is None or self.task_count > 0)
+            reschedule_task = reschedule_task and (self.freq is not None) and \
+                    (self.task_count is None or self.task_count > 0)
 
         except Exception as task_exception:
             if self.retry_count >= self.max_retries:
@@ -97,7 +98,7 @@ class PyTask (FunctionWrapper):
         
         if reschedule_task:
             self.scheduled_timestamp = time.time() + (
-                max(self.freq - execution_time, 5) if task_success else 10
+                max(self.freq - execution_time, 0) if task_success else 10
             )
                 
         # Reset tracking parameters.

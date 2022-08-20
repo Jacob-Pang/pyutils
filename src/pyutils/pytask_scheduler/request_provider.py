@@ -7,7 +7,7 @@ class RequestProviderGate:
     def __init__(self, usage_limits: Iterable, gate_id: str = None, gate_keys: any = None) -> None:
         """
         Parameters:
-            usage_limits (Iterable):
+            usage_limits (Iterable): Collection of (usage_capacity, usage_window).
         """
         if not gate_id: gate_id = f"gate_{int(time.time())}_{int(random.random() * 1e5)}"
 
@@ -99,6 +99,10 @@ class RequestProviderGate:
     
 class RequestProvider:
     def __init__(self, usage_limits: Iterable) -> None:
+        """
+        Parameters:
+            usage_limits (Iterable): Collection of (usage_capacity, usage_window).
+        """
         self.usage_limits = usage_limits
         self.gates = set()
     
