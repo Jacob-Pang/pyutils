@@ -141,7 +141,7 @@ class RequestProvider:
 
     def __str__(self) -> str:
         # Returns breakdown of gates and usage capacity
-        return f"PROVIDER {self.provider_id}[\n" \
+        return f"PROVIDER {self.provider_id}[\n" + \
             "\n".join([ str(gate) for gate in self.gates ]) + \
             "]"
 
