@@ -174,7 +174,7 @@ def run_pytasks_scheduler(pytasks: Iterable, verbose: bool = True, **kwargs) -> 
             completed_pytasks.append(pytask)
 
         if verbose:
-            print(get_scheduler_state(), end='\r')
+            print("\r" + get_scheduler_state())
             
 
 if __name__ == "main":
