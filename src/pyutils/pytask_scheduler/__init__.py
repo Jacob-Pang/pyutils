@@ -124,7 +124,7 @@ class PyTask (FunctionWrapper):
         return self.scheduled_timestamp == other.scheduled_timestamp
 
     def __str__(self) -> str:
-        return f"PYTASK {self.task_id:<15} [ STATUS : {self.state:<15}] SCHEDULED : {self.scheduled_timestamp:<15}" + \
+        return f"PYTASK {self.task_id:<15} [ STATUS : {self.state:<15}] SCHEDULED : {int(self.scheduled_timestamp):<15}" + \
                 f" COMPLETED : {self.completed_count:<4} ]"
 
 def run_pytasks_scheduler(pytasks: Iterable, verbose: bool = True, **kwargs) -> None:
@@ -145,12 +145,12 @@ def run_pytasks_scheduler(pytasks: Iterable, verbose: bool = True, **kwargs) -> 
     def print_scheduler_state(running_pytask: PyTask = None) -> str:
         temporary_print(
             f"TIME : {time.time()}\n" + \
-            "REQUEST_PROVIDER_LIST\n" + \
+            "RequestProviders\n" + \
             "==============================================================================================\n" + \
             "\n".join([ str(request_provider) for request_provider in request_providers ]) + "\n\n" + \
-            "PYTASK_LIST\n" + \
+            "PyTasks\n" + \
             "==============================================================================================\n" + \
-            "\n".join([ str(pytask) for pytask in _pytasks ])
+            "\n".join([ str(pytask) for pytask in _pytasks ]) + "\n\n"
         )
 
     heapq.heapify(pytasks)

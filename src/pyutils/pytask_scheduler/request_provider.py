@@ -106,7 +106,7 @@ class RequestProviderGate:
     def __str__(self) -> str:
         # Returns breakdown of usage
         return "\n".join([
-            f"GATE {self.gate_id:<15} [ WINDOW : {usage_window:<5} USAGE : {used_capacity:>5}/{usage_capacity:<5} ]"
+            f"  GATE {self.gate_id:<15} [ WINDOW : {usage_window:<5} USAGE : {used_capacity:>5}/{usage_capacity:<5} ]"
             for (usage_capacity, usage_window), used_capacity in self.cached_usage_stats.items()
         ])
     
@@ -141,7 +141,9 @@ class RequestProvider:
 
     def __str__(self) -> str:
         # Returns breakdown of gates and usage capacity
-        return f"PROVIDER {self.provider_id}\n" + "\n".join([ str(gate) for gate in self.gates ])
+        return f"PROVIDER {self.provider_id}[\n" \
+            "\n".join([ str(gate) for gate in self.gates ]) + \
+            "]"
 
 if __name__ == "__main__":
     pass
