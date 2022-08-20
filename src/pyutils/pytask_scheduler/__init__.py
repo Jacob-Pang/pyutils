@@ -8,7 +8,7 @@ from pyutils.io_utils import temporary_print, flush_temporary_lines
 
 class PyTask (FunctionWrapper):
     def __init__(self, function: callable, task_id: str = None, scheduled_timestamp: int = time.time(),
-        freq: int = None, task_count: int = None, max_retries: int = 0, request_provider_usage: dict = {},
+        freq: int = 0, task_count: int = None, max_retries: int = 0, request_provider_usage: dict = {},
         **default_kwargs):
         """
         Parameters:
@@ -16,13 +16,12 @@ class PyTask (FunctionWrapper):
             task_id (str): Unique ID to identify the task with. If unspecified, a random ID will be
                     generated for the task.
             scheduled_timestamp (int): Scheduled time to run the task.
-            freq (int): The frequency in seconds by which to run the task. If unspecified (None),
-                    the task runs only once. Frequency does not account for the duration spent on
-                    execution: if the frequency is 60s and a task takes 10s, the task is rescheduled
-                    50s after the execution is completed. If the execution time exceeds the frequency
-                    then the task is rescheduled 5s after the execution is completed.
-            task_count (int): The number of times to run the task. If unspecified (None), the task will
-                    be run indefinitely.
+            freq (int, opt): The frequency in seconds by which to run the task. Frequency does not account
+                    for the duration spent on execution: if the frequency is 60s and a task takes 10s, the
+                    task is rescheduled 50s after the execution is completed. If the execution time exceeds
+                    the frequency then the task is rescheduled immediately after the execution is completed.
+            task_count (int, opt): The number of times to run the task. If a negative number is passed
+                    (default), then the task runs indefinitely.
             provider_id (str): The request provider id to track runs.
             max_retries (int, opt): The number of times to retry the task in the event of exceptions.
                     Re-attempts are reset upon successful completion of the task.
@@ -30,9 +29,7 @@ class PyTask (FunctionWrapper):
                     requests is the number of requests consumed per execution.
         """
         FunctionWrapper.__init__(self, function, **default_kwargs)
-
-        if not task_id:
-            task_id = f"pytask_{int(time.time())}_{int(random.random() * 1e5)}"
+        if not task_id: task_id = f"pytask_{int(time.time())}_{int(random.random() * 1e5)}"
         
         self.task_id = task_id
         self.scheduled_timestamp = scheduled_timestamp
@@ -46,7 +43,7 @@ class PyTask (FunctionWrapper):
         self.completed_count = 0
         self.state = "READY"
 
-    def __call__(self, *args, **kwargs) -> any:
+    def __call__(self, *args, **kwargs) -> bool:
         allocated_gates = dict()
         self.scheduled_timestamp = None # Reset
 
@@ -57,7 +54,7 @@ class PyTask (FunctionWrapper):
                 self.scheduled_timestamp = timestamp # Reschedule task
                 self.blocked_count += 1
                 self.state = f"BLOCKED ({self.blocked_count})"
-                return
+                return False
             
             allocated_gates[gate] = requests
 
@@ -72,25 +69,26 @@ class PyTask (FunctionWrapper):
             gate_keys = { gate.gate_id: gate.gate_keys for gate in allocated_gates }
             start_time = time.time()
             task_output = FunctionWrapper.__call__(self, *args, gate_keys=gate_keys, **kwargs)
-
             execution_time = time.time() - start_time
             task_success = True
 
             if self.task_count: # Decrement count
-                self.task_count -= 1
+                self.task_count = max(self.task_count - 1, -1)
 
+            # Interpreting output from task
             if isinstance(task_output, tuple):
                 reschedule_task, gate_usage = task_output
             elif task_output:
                 reschedule_task, gate_usage = bool(task_output), True
 
-            # Reschedule where the following conditions are met:
-            # 1. frequency has been defined.
-            # 2. task_count has not been defined (None) or task_count is greater than 0.
-            # 3. task_output has not been defined (None) or task_output is True.
-            reschedule_task = reschedule_task and (self.freq is not None) and \
-                    (self.task_count is None or self.task_count > 0)
+            # Reschedule only where the following conditions are met:
+            reschedule_task = reschedule_task and self.task_count != 0
 
+            # Reset tracking stats
+            self.completed_count += 1
+            self.retry_count = 0
+            self.blocked_count = 0
+            self.state = "READY" if reschedule_task else "COMPLETED"
         except Exception as task_exception:
             if self.retry_count >= self.max_retries:
                 raise task_exception
@@ -105,12 +103,6 @@ class PyTask (FunctionWrapper):
             self.scheduled_timestamp = time.time() + (
                 max(self.freq - execution_time, 0) if task_success else 10
             )
-
-        if task_success:
-            self.completed_count += 1
-            self.retry_count = 0
-            self.blocked_count = 0
-            self.state = "READY" if reschedule_task else "COMPLETED"
 
         return task_success
 
@@ -155,7 +147,6 @@ def run_pytasks_scheduler(pytasks: Iterable, verbose: bool = True, **kwargs) -> 
         )
 
     heapq.heapify(pytasks)
-    completed_pytasks = []
 
     while pytasks:
         pytask = heapq.heappop(pytasks)
@@ -174,8 +165,6 @@ def run_pytasks_scheduler(pytasks: Iterable, verbose: bool = True, **kwargs) -> 
 
         if pytask.scheduled_timestamp: # Has rescheduled timing
             heapq.heappush(pytasks, pytask) # Requeue
-        else:
-            completed_pytasks.append(pytask)
 
         if verbose: print_scheduler_state()
 

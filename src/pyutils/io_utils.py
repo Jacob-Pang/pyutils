@@ -1,4 +1,5 @@
 import colorama
+import curses
 
 colorama.init()
 TEMPORARY_LINES = 0
