@@ -4,6 +4,7 @@ import random
 
 from collections.abc import Iterable
 from pyutils.wrappers import FunctionWrapper
+from pyutils.io_utils import temporary_print, flush_temporary_lines
 
 class PyTask (FunctionWrapper):
     def __init__(self, function: callable, task_id: str = None, scheduled_timestamp: int = time.time(),
@@ -43,6 +44,7 @@ class PyTask (FunctionWrapper):
         self.retry_count = 0
         self.blocked_count = 0
         self.completed_count = 0
+        self.state = "READY"
 
     def __call__(self, *args, **kwargs) -> any:
         allocated_gates = dict()
@@ -54,6 +56,7 @@ class PyTask (FunctionWrapper):
             if timestamp > time.time():
                 self.scheduled_timestamp = timestamp # Reschedule task
                 self.blocked_count += 1
+                self.state = f"BLOCKED ({self.blocked_count})"
                 return
             
             allocated_gates[gate] = requests
@@ -92,6 +95,7 @@ class PyTask (FunctionWrapper):
             if self.retry_count >= self.max_retries:
                 raise task_exception
             
+            self.state = f"FAILED ({self.retry_count})"
             self.retry_count += 1
 
         for gate, _ in allocated_gates.items(): # complete requests and update usage capacity.
@@ -106,6 +110,7 @@ class PyTask (FunctionWrapper):
             self.completed_count += 1
             self.retry_count = 0
             self.blocked_count = 0
+            self.state = "READY" if reschedule_task else "COMPLETED"
 
         return task_success
 
@@ -119,39 +124,34 @@ class PyTask (FunctionWrapper):
         return self.scheduled_timestamp == other.scheduled_timestamp
 
     def __str__(self) -> str:
-        if not self.scheduled_timestamp:
-            state = "COMPLETED"
-        elif self.blocked_count:
-            state = f"BLOCKED ({self.blocked_count})"
-        elif self.retry_count:
-            state = f"FAILED ({self.retry_count})"
-        else:
-            state = f"READY"
-
-        return f"PYTASK {self.task_id:<15} [ STATUS : {state:<15}] SCHEDULED : {self.scheduled_timestamp:<15}" + \
+        return f"PYTASK {self.task_id:<15} [ STATUS : {self.state:<15}] SCHEDULED : {self.scheduled_timestamp:<15}" + \
                 f" COMPLETED : {self.completed_count:<4} ]"
 
 def run_pytasks_scheduler(pytasks: Iterable, verbose: bool = True, **kwargs) -> None:
     pytasks = sorted(pytasks)
 
-    # Compile request providers
+    # Compile request providers and pytasks
     request_providers = set()
+    _pytasks = []
 
     for pytask in pytasks:
+        _pytasks.append(pytask)
+
         for request_provider in pytask.request_provider_usage:
             request_providers.add(request_provider)
     
     request_providers = list(request_providers)
 
-    def get_scheduler_state(end: str = '\r') -> str:
-        return f"TIME : {time.time()}\n" + \
+    def print_scheduler_state(running_pytask: PyTask = None) -> str:
+        temporary_print(
+            f"TIME : {time.time()}\n" + \
             "REQUEST_PROVIDER_LIST\n" + \
             "==============================================================================================\n" + \
             "\n".join([ str(request_provider) for request_provider in request_providers ]) + "\n\n" + \
             "PYTASK_LIST\n" + \
             "==============================================================================================\n" + \
-            "\n".join([ str(pytask) for pytask in pytasks ]) + "\n" + \
-            "\n".join([ str(pytask) for pytask in completed_pytasks ])
+            "\n".join([ str(pytask) for pytask in _pytasks ])
+        )
 
     heapq.heapify(pytasks)
     completed_pytasks = []
@@ -160,12 +160,15 @@ def run_pytasks_scheduler(pytasks: Iterable, verbose: bool = True, **kwargs) -> 
         pytask = heapq.heappop(pytasks)
 
         while pytask.scheduled_timestamp > time.time():
-            time.sleep(1) # Busy waiting
+            time.sleep(.5) # Busy waiting
+
+        pytask.state = "RUNNING"
+        if verbose: print_scheduler_state()
 
         try:
             pytask(**kwargs)
         except Exception as exception:
-            print(get_scheduler_state())
+            flush_temporary_lines()
             raise exception
 
         if pytask.scheduled_timestamp: # Has rescheduled timing
@@ -173,9 +176,9 @@ def run_pytasks_scheduler(pytasks: Iterable, verbose: bool = True, **kwargs) -> 
         else:
             completed_pytasks.append(pytask)
 
-        if verbose:
-            print("\r" + get_scheduler_state())
-            
+        if verbose: print_scheduler_state()
+
+    flush_temporary_lines()
 
 if __name__ == "main":
     pass
