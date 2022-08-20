@@ -1,3 +1,4 @@
+import sys
 TEMPORARY_LINES = 0
 
 def flush_temporary_lines() -> None:
@@ -5,7 +6,8 @@ def flush_temporary_lines() -> None:
     
     for _ in range(TEMPORARY_LINES):
         # move up cursor and delete whole line
-        print("\x1b[1A\x1b[2K", end='\r')
+        sys.stdout.write("\x1b[1A\x1b[2K")
+        # print("\x1b[1A\x1b[2K", end='\r')
     
     TEMPORARY_LINES = 0
 
