@@ -144,12 +144,14 @@ def run_pytasks_scheduler(pytasks: Iterable, verbose: bool = True, **kwargs) -> 
 
     def print_scheduler_state(running_pytask: PyTask = None) -> str:
         temporary_print(
-            f"TIME : {time.time()}\n" + \
+            f"SchedulerTime : {time.time()}\n" + \
+            "__________________________________________________________________________________________________________\n" + \
             "RequestProviders\n" + \
-            "==============================================================================================\n" + \
-            "\n".join([ str(request_provider) for request_provider in request_providers ]) + "\n\n" + \
-            "PyTasks\n" + \
-            "==============================================================================================\n" + \
+            "==========================================================================================================\n" + \
+            "\n".join([ str(request_provider) for request_provider in request_providers ]) + "\n" + \
+            "__________________________________________________________________________________________________________\n" + \
+            "Tasks\n" + \
+            "==========================================================================================================\n" + \
             "\n".join([ str(pytask) for pytask in _pytasks ]) + "\n\n"
         )
 
