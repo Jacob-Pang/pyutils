@@ -78,13 +78,12 @@ class PyTask (FunctionWrapper):
             # Interpreting output from task
             if isinstance(task_output, tuple):
                 reschedule_task, gate_usage = task_output
-            elif task_output:
+            else: # Use boolean value of output
                 reschedule_task, gate_usage = bool(task_output), True
 
             # Reschedule only where the following conditions are met:
             reschedule_task = reschedule_task and self.task_count != 0
-            print(task_output, "->", reschedule_task)
-
+            
             # Reset tracking stats
             self.completed_count += 1
             self.retry_count = 0
