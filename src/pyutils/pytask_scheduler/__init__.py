@@ -83,6 +83,7 @@ class PyTask (FunctionWrapper):
 
             # Reschedule only where the following conditions are met:
             reschedule_task = reschedule_task and self.task_count != 0
+            print(task_output, "->", reschedule_task)
 
             # Reset tracking stats
             self.completed_count += 1
