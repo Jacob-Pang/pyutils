@@ -69,7 +69,7 @@ class Worker:
         
         self.retire()
 
-class Manager (TaskQueue):
+class TaskManager (TaskQueue):
     def __init__(self, *tasks: Task, timeout: int = 30, semaphore: Semaphore = None) -> None:
         super().__init__(*tasks, semaphore=semaphore)
 
