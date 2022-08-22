@@ -24,6 +24,7 @@ class Worker:
     def retire(self) -> None:
         self.manager.acquire()
         self.manager.retire_worker(self.worker_id)
+        self.manager.update_state()
         self.manager.release()
 
     def execute_task(self, task: Task) -> None:
@@ -43,29 +44,10 @@ class Worker:
     def __hash__(self) -> int:
         return self.worker_id.__hash__()
 
+    def __str__(self) -> str:
+        return f"Worker {self.worker_id} [ STATUS : {(f'RUNNING ({self.task_id})' if self.task_id else 'IDLE'):<25} ]"
+
     def run(self) -> None:
-        timeout = time.time() + self.timeout
-
-        while time.time() < timeout:
-            self.manager.acquire()
-
-            if self.manager.done():
-                self.manager.release()
-                break
-
-            if not self.manager.has_active_tasks() or not self.manager.has_pending_task():
-                self.manager.release()
-                continue
-
-            task = self.manager.pop()
-            self.manager.release()
-
-            self.execute_task(task)
-            timeout = time.time() + self.timeout
-        
-        self.retire()
-    
-    def run_async(self) -> None:
         timeout = time.time() + self.timeout
 
         while time.time() < timeout:
@@ -96,6 +78,16 @@ class Manager (TaskQueue):
         self.resources = set()
         self.listening_mode = False
 
+        for task in self.tasks:
+            for resource in task.resource_usage:
+                self.resources.add(resource)
+
+    def push(self, task: Task) -> None:
+        for resource in task.resource_usage:
+            self.resources.add(resource)
+
+        return super().push(task)
+
     def create_worker(self) -> Worker:
         worker = Worker(manager=self, timeout=self.timeout)
         self.workers[worker.worker_id] = worker
@@ -106,9 +98,10 @@ class Manager (TaskQueue):
         self.workers.pop(worker_id)
 
     def state_repr(self) -> str:
-        return f"Timestamp : {time.time()}" + \
-                "===============================================================================================\n" + \
+        return f"Timestamp : {time.time()}\n" + \
+                "\n===============================================================================================\n" + \
                 "Resources\n\n" + \
+                "\n".join([str(resource) for resource in self.resources]) + \
                 "\n===============================================================================================\n" + \
                 "Workers\n\n" + \
                 "\n".join([str(worker) for worker in self.workers]) + \
