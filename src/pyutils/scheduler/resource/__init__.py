@@ -57,9 +57,9 @@ class ResourceGate:
         return 0 if units <= self.get_free_units() else None
 
     def get_repr(self, resource_id: str) -> str:
-        return f"RSRC {resource_id[:25]:<25} GATE {self.gate_id[:25]:<25} " + \
-            f"[ UTIL : {self.usage_buffer.units:<4} / {self.units:<4} | " + \
-            f"BLOCKED : {self.reserve_buffer.units:<4} ]"
+        return f"Resource {resource_id[:25]:<25} Gate {self.gate_id[:25]:<25} " + \
+            f"[ Usage : {self.usage_buffer.units:<4} / {self.units:<4} | " + \
+            f"Scheduled : {self.reserve_buffer.units:<4} ]"
 
 class Resource:
     def __init__(self, resource_id: str = None):

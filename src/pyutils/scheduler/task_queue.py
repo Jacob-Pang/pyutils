@@ -1,4 +1,5 @@
 import heapq
+import time
 
 from collections.abc import Iterable
 from multiprocessing import Semaphore
@@ -7,8 +8,8 @@ from pyutils.scheduler.task import Task, TaskState
 class TaskQueue:
     def __init__(self, *tasks: Task, semaphore: Semaphore = None) -> None:
         if not semaphore: semaphore = Semaphore(1)
-        
-        self.tasks = tasks
+
+        self.tasks = list(tasks)
         self.blocked_tasks = set()
         self.semaphore = Semaphore(1)
     
@@ -22,13 +23,14 @@ class TaskQueue:
         heapq.heapify(self.tasks)
     
     def push(self, task: Task) -> None:
-        if self.task.state == TaskState.Blocked():
+        if task.state == TaskState.Blocked():
             return self.blocked_tasks.add(task)
-        
-        heapq.heappush(self.tasks, task)
+
+        if task.state != TaskState.Done():
+            heapq.heappush(self.tasks, task)
         
     def pop(self) -> Task:
-        heapq.heappop(self.tasks)
+        return heapq.heappop(self.tasks)
 
     def peek(self) -> Task:
         return self.tasks[0]
@@ -45,6 +47,21 @@ class TaskQueue:
                 blocked_tasks.add(blocked_task)
         
         self.blocked_tasks = blocked_tasks
+
+    def has_pending_task(self) -> bool:
+        return self.tasks[0].scheduled_time <= time.time()
+
+    def has_active_tasks(self) -> bool:
+        return len(self.tasks) > 0
+    
+    def has_blocked_tasks(self) -> bool:
+        return len(self.blocked_tasks) > 0
+
+    def empty(self) -> bool:
+        return len(self.tasks) + len(self.blocked_tasks) <= 0
+
+    def done(self) -> bool:
+        return self.empty()
 
 if __name__ == "__main__":
     pass    

@@ -117,7 +117,7 @@ class PyTask (FunctionWrapper):
 
     def __str__(self) -> str:
         return f"PYTASK {self.task_id:<15} [ STATUS : {self.state:<15}] SCHEDULED : " + \
-                (f"{int(self.scheduled_timestamp):<15}" if self.scheduled_timestamp else "NA") + \
+                f"{(int(self.scheduled_timestamp) if self.scheduled_timestamp else 'NA'):<15}" + \
                 f" COMPLETED : {self.completed_count:<4} ]"
 
 def run_pytasks_scheduler(pytasks: Iterable, verbose: bool = True, **kwargs) -> None:

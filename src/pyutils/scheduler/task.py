@@ -147,9 +147,9 @@ class Task (FunctionWrapper):
         return True
 
     def __repr__(self) -> str:
-        return f"TASK {self.task_id:<25} [ STATUS : {self.state.__repr__():<7} | SCHEDULED : " + \
-                f"{(int(self.scheduled_time) if self.scheduled_time else 'NONE'):<10} | " + \
-                f"COMPLETED : {self.completed_count:<4} ]"
+        return f"Task {self.task_id:<25} [ Status : {self.state.__repr__():<7} | Scheduled : " + \
+                f"{(int(self.scheduled_time) if self.scheduled_time else 'None'):<10} | " + \
+                f"Completed : {self.completed_count:<4} ]"
 
     def __lt__(self, other: object) -> bool:
         if self.scheduled_time is None:  return False

@@ -113,8 +113,8 @@ class UsageLimiter (ResourceGate):
                 self.parent.freed_usage_queue.append(freed_usage_pair)
 
     def get_repr(self, resource_id: str) -> str:
-        representation = f"RSRC {resource_id[:25]:<25} GATE {f'{self.gate_id} WIND {self.window}'[:25]:<25} " + \
-                f"[ UTIL : {self.get_window_usage():<4} / {self.units:<4} | BLOCKED : {self.reserve_buffer.units:<4} ]"
+        representation = f"Resource {resource_id[:25]:<25} Gate {f'{self.gate_id} Limiter {self.window}'[:25]:<25} " + \
+                f"[ Usage : {self.get_window_usage():<4} / {self.units:<4} | Scheduled : {self.reserve_buffer.units:<4} ]"
 
         if self.child:
             return f"{representation}\n{self.child.get_repr(resource_id)}"

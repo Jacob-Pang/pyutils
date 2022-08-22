@@ -2,6 +2,7 @@ import time
 
 from multiprocessing import Semaphore
 from pyutils import generate_unique_id
+from pyutils.io_utils import temporary_print
 from pyutils.scheduler.task import Task
 from pyutils.scheduler.task_queue import TaskQueue
 
@@ -18,7 +19,7 @@ class Worker:
         self.worker_id = worker_id
         self.manager = manager
         self.timeout = timeout
-        self.task = None
+        self.task_id = None
     
     def retire(self) -> None:
         self.manager.acquire()
@@ -26,6 +27,7 @@ class Worker:
         self.manager.release()
 
     def execute_task(self, task: Task) -> None:
+        self.task_id = task.task_id
         resources_freed = task()
 
         self.manager.acquire()
@@ -34,7 +36,9 @@ class Worker:
             self.manager.update(task.resource_usage.keys())
 
         self.manager.push(task)
+        self.manager.update_state()
         self.manager.release()
+        self.task_id = None
 
     def __hash__(self) -> int:
         return self.worker_id.__hash__()
@@ -45,17 +49,42 @@ class Worker:
         while time.time() < timeout:
             self.manager.acquire()
 
-            if not self.manager.tasks or self.manager.peek().scheduled_time > time.time():
+            if self.manager.done():
+                self.manager.release()
+                break
+
+            if not self.manager.has_active_tasks() or not self.manager.has_pending_task():
                 self.manager.release()
                 continue
 
-            self.manager.acquire()
             task = self.manager.pop()
             self.manager.release()
 
             self.execute_task(task)
             timeout = time.time() + self.timeout
-            
+        
+        self.retire()
+    
+    def run_async(self) -> None:
+        timeout = time.time() + self.timeout
+
+        while time.time() < timeout:
+            self.manager.acquire()
+
+            if self.manager.done():
+                self.manager.release()
+                break
+
+            if not self.manager.has_active_tasks() or not self.manager.has_pending_task():
+                self.manager.release()
+                continue
+
+            task = self.manager.pop()
+            self.manager.release()
+
+            self.execute_task(task)
+            timeout = time.time() + self.timeout
+        
         self.retire()
 
 class Manager (TaskQueue):
@@ -63,21 +92,43 @@ class Manager (TaskQueue):
         super().__init__(*tasks, semaphore=semaphore)
 
         self.timeout = timeout
-        self.workers = set()
+        self.workers = dict()
+        self.resources = set()
+        self.listening_mode = False
 
     def create_worker(self) -> Worker:
         worker = Worker(manager=self, timeout=self.timeout)
-        self.workers.add(worker)
+        self.workers[worker.worker_id] = worker
         
         return worker
 
-    def retire_worker(self, worker) -> None:
-        self.workers.remove(worker)
+    def retire_worker(self, worker_id: str) -> None:
+        self.workers.pop(worker_id)
+
+    def state_repr(self) -> str:
+        return f"Timestamp : {time.time()}" + \
+                "===============================================================================================\n" + \
+                "Resources\n\n" + \
+                "\n===============================================================================================\n" + \
+                "Workers\n\n" + \
+                "\n".join([str(worker) for worker in self.workers]) + \
+                "\n===============================================================================================\n" + \
+                "Tasks\n" + \
+                "\n".join([str(task) for task in self.tasks]) + "\n" + \
+                "\n".join([str(task) for task in self.blocked_tasks]) + "\n\n"
+
+    def update_state(self) -> None:
+        temporary_print(self.state_repr())
 
     def run_sync(self) -> None:
-        while self: # Exisiting tasks
+        self.listening_mode = False
+
+        while not self.done():
             worker = self.create_worker()
             worker.run()
+
+    def done(self) -> bool:
+        return super().done() or self.listening_mode
 
 if __name__ == "__main__":
     pass
