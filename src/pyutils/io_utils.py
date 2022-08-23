@@ -4,10 +4,7 @@ from pyutils import StateNamespace
 from pyutils import _STATE
 
 colorama.init()
-
-_STATE.set_attr(
-    temporary_lines=0
-)
+_STATE.set_attr("temporary_lines", 0)
 
 def flush_temporary_lines(state: StateNamespace = _STATE) -> None:
     if not hasattr(state, "temporary_lines"):
