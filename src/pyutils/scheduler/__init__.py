@@ -115,13 +115,13 @@ class TaskManager (TaskQueue):
         return f"Timestamp : {time.time()}" + \
                 "\n=============================================================================================================\n" + \
                 "Resources\n\n" + \
-                "\n".join([str(resource) for resource in self.state.resources]) + \
+                "\n".join([str(resource) for resource in self.state.resources.values()]) + \
                 "\n\n=============================================================================================================\n" + \
                 "Workers\n\n" + \
                 "\n".join([str(worker) for worker in self.state.workers.values()]) + \
                 "\n\n=============================================================================================================\n" + \
                 "Tasks\n\n" + \
-                "\n".join([str(task) for task in self.state.tasks]) + "\n\n"
+                "\n".join([str(task) for task in self.state.tasks.values()]) + "\n\n"
 
     def print_state(self) -> None:
         if self.verbose_mode:
