@@ -2,7 +2,8 @@ import time
 
 from multiprocessing import Semaphore
 
-from pyutils import _STATE, StateNamespace
+from pyutils import _STATE
+from pyutils import StateNamespace
 from pyutils import generate_unique_id
 from pyutils.io_utils import temporary_print
 from pyutils.scheduler.task import Task
@@ -78,6 +79,7 @@ class TaskManager (TaskQueue):
 
         self.timeout = timeout
         self.state = state
+        self.verbose_mode = True
 
         self.state.set_attr("workers", dict(), override_attr=False)
         self.state.set_attr("resources", dict(), override_attr=False)
@@ -101,7 +103,7 @@ class TaskManager (TaskQueue):
         return super().push(task)
 
     def create_worker(self) -> Worker:
-        worker = Worker(manager=self, timeout=self.timeout)
+        worker = Worker(manager=self, worker_id=generate_unique_id(self.state), timeout=self.timeout)
         self.state.workers[worker.worker_id] = worker
         
         return worker
@@ -122,10 +124,11 @@ class TaskManager (TaskQueue):
                 "\n".join([str(task) for task in self.state.tasks]) + "\n\n"
 
     def print_state(self) -> None:
-        temporary_print(self.state_repr())
+        if self.verbose_mode:
+            temporary_print(self.state_repr(), self.state)
 
     def run(self) -> None:
-        while not self.active():
+        while self.active():
             worker = self.create_worker()
             worker.run()
 
