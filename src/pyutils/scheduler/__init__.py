@@ -1,6 +1,8 @@
 import time
 
 from multiprocessing import Semaphore
+
+from pyutils import _STATE, StateNamespace
 from pyutils import generate_unique_id
 from pyutils.io_utils import temporary_print
 from pyutils.scheduler.task import Task
@@ -24,7 +26,7 @@ class Worker:
     def retire(self) -> None:
         self.manager.acquire()
         self.manager.retire_worker(self.worker_id)
-        self.manager.update_state()
+        self.manager.print_state()
         self.manager.release()
 
     def execute_task(self, task: Task) -> None:
@@ -37,7 +39,7 @@ class Worker:
             self.manager.update(task.resource_usage.keys())
 
         self.manager.push(task)
-        self.manager.update_state()
+        self.manager.print_state()
         self.manager.release()
         self.task_id = None
 
@@ -53,7 +55,7 @@ class Worker:
         while time.time() < timeout:
             self.manager.acquire()
 
-            if self.manager.done():
+            if not self.manager.active():
                 self.manager.release()
                 break
 
@@ -70,58 +72,62 @@ class Worker:
         self.retire()
 
 class TaskManager (TaskQueue):
-    def __init__(self, *tasks: Task, timeout: int = 30, semaphore: Semaphore = None) -> None:
+    def __init__(self, *tasks: Task, timeout: int = 30, semaphore: Semaphore = None,
+        state: StateNamespace = _STATE) -> None:
         super().__init__(*tasks, semaphore=semaphore)
 
         self.timeout = timeout
-        self.workers = dict()
-        self.resources = set()
-        self.listening_mode = False
+        self.state = state
+
+        self.state.set_attr("workers", dict(), override_attr=False)
+        self.state.set_attr("resources", dict(), override_attr=False)
+        self.state.set_attr("tasks", dict(), override_attr=False)
 
         for task in self.tasks:
-            for resource in task.resource_usage:
-                self.resources.add(resource)
+            self.state.tasks[task.task_id] = task
+
+        for task in self.state.tasks.values():
+            self.update_resources(task)
+
+    def update_resources(self, task: Task) -> None:
+        for resource in task.resource_usage:
+            self.state.resources[resource.resource_id] = resource
 
     def push(self, task: Task) -> None:
-        for resource in task.resource_usage:
-            self.resources.add(resource)
+        if not task.task_id in self.state.tasks:
+            self.state.tasks[task.task_id] = task
+            self.update_resources(task)
 
         return super().push(task)
 
     def create_worker(self) -> Worker:
         worker = Worker(manager=self, timeout=self.timeout)
-        self.workers[worker.worker_id] = worker
+        self.state.workers[worker.worker_id] = worker
         
         return worker
 
     def retire_worker(self, worker_id: str) -> None:
-        self.workers.pop(worker_id)
+        self.state.workers.pop(worker_id)
 
     def state_repr(self) -> str:
-        return f"Timestamp : {time.time()}\n" + \
-                "\n===============================================================================================\n" + \
+        return f"Timestamp : {time.time()}" + \
+                "\n=============================================================================================================\n" + \
                 "Resources\n\n" + \
-                "\n".join([str(resource) for resource in self.resources]) + \
-                "\n===============================================================================================\n" + \
+                "\n".join([str(resource) for resource in self.state.resources]) + \
+                "\n\n=============================================================================================================\n" + \
                 "Workers\n\n" + \
-                "\n".join([str(worker) for worker in self.workers]) + \
-                "\n===============================================================================================\n" + \
-                "Tasks\n" + \
-                "\n".join([str(task) for task in self.tasks]) + "\n" + \
-                "\n".join([str(task) for task in self.blocked_tasks]) + "\n\n"
+                "\n".join([str(worker) for worker in self.state.workers.values()]) + \
+                "\n\n=============================================================================================================\n" + \
+                "Tasks\n\n" + \
+                "\n".join([str(task) for task in self.state.tasks]) + "\n\n"
 
-    def update_state(self) -> None:
+    def print_state(self) -> None:
         temporary_print(self.state_repr())
 
-    def run_sync(self) -> None:
-        self.listening_mode = False
-
-        while not self.done():
+    def run(self) -> None:
+        while not self.active():
             worker = self.create_worker()
             worker.run()
-
-    def done(self) -> bool:
-        return super().done() or self.listening_mode
 
 if __name__ == "__main__":
     pass

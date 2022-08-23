@@ -5,6 +5,7 @@ from collections.abc import Iterable
 from pyutils.scheduler.resource import ResourceGate
 from multiprocessing import Semaphore
 
+
 class UsageLimiter (ResourceGate):
     @staticmethod
     def init_usage_limiter(units_window_list: Iterable, **attributes):
@@ -28,8 +29,7 @@ class UsageLimiter (ResourceGate):
             ResourceGate.__init__(self, units, gate_id, child.usage_buffer, child.reserve_buffer,
                     child.semaphore, **attributes)
         else:
-            ResourceGate.__init__(self, units, gate_id, usage_buffer, semaphore,
-                    reserve_buffer, **attributes)
+            ResourceGate.__init__(self, units, gate_id, usage_buffer, reserve_buffer, semaphore, **attributes)
             
         self.window = window
         self.freed_usage_queue = deque()
@@ -39,6 +39,7 @@ class UsageLimiter (ResourceGate):
         self.child = child
 
     def free(self, units: int) -> None:
+        # Enforces updates
         if self.child:
             return self.child.free(units)
 
@@ -105,12 +106,13 @@ class UsageLimiter (ResourceGate):
     def update(self) -> None:
         window_boundary = self.get_window_boundary()
 
-        while self.freed_usage_queue and self.freed_usage_queue[0][0] < window_boundary:
+        while self.freed_usage_queue and self.freed_usage_queue[0][0] <= window_boundary:
             freed_usage_pair = self.freed_usage_queue.popleft()
             self.freed_usage = self.freed_usage - freed_usage_pair[1]
 
             if self.parent: # Cascade released usage upwards
                 self.parent.freed_usage_queue.append(freed_usage_pair)
+                self.parent.freed_usage += freed_usage_pair[1]
 
     def get_repr(self, resource_id: str) -> str:
         representation = f"Resource {resource_id[:25]:<25} Gate {f'{self.gate_id} Limiter {self.window}'[:25]:<25} " + \

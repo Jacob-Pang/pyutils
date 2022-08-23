@@ -48,6 +48,9 @@ class ResourceGate:
 
     def free(self, units: int) -> None:
         self.usage_buffer.units -= units
+
+    def update(self) -> None:
+        pass
     
     def get_free_units(self) -> int:
         # Returns the number of units available for reserving usage

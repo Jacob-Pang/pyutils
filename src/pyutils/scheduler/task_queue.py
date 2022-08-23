@@ -60,8 +60,8 @@ class TaskQueue:
     def empty(self) -> bool:
         return len(self.tasks) + len(self.blocked_tasks) <= 0
 
-    def done(self) -> bool:
-        return self.empty()
+    def active(self) -> bool:
+        return not self.empty()
 
 if __name__ == "__main__":
     pass    

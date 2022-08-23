@@ -91,6 +91,7 @@ class Task (FunctionWrapper):
             gate.release()
 
         self.resource_constraint = None
+        self.state = TaskState.Ready()
         return True
 
     def reschedule(self, start_time: int) -> None:
@@ -137,10 +138,11 @@ class Task (FunctionWrapper):
                 self.retry_count += 1
                 self.reschedule(start_time)
 
-        # Free usage units
+        # Free usage units and update gate
         for gate, units in self.reserved_gates.items():
             gate.acquire()
             gate.free(units)
+            gate.update()
             gate.release()
 
         self.reserved_gates = None
