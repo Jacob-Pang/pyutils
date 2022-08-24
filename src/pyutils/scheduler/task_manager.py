@@ -74,7 +74,7 @@ class TaskManager:
         for resource_key, usage in task.resource_usage.items():
             resource = self.resources.get(resource_key)
 
-            if self.blocked_resource_usage.get(resource_key):
+            if self.blocked_resource_usage.get(resource_key) and usage > 0:
                 resource_constraints.add(resource_key)
                 continue
 
