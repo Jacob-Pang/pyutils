@@ -5,7 +5,7 @@ from pyutils.io import erase_stdout
 from pyutils.scheduler.resource import ResourceProxy
 from pyutils.scheduler.task import Task
 from pyutils.scheduler.task.task_state import DoneState, NewState, TaskState, RunningState, BlockedState, WaitingState
-from pyutils.scheduler.worker.worker_state import WorkerState, BusyState, IdleState, DeadState
+from pyutils.scheduler.worker.worker_state import WorkerState, IdleState
 
 class TaskManager:
     def __init__(self, sync_manager: SyncManager, verbose: bool = True) -> None:
@@ -24,7 +24,8 @@ class TaskManager:
 
         self.state = sync_manager.Namespace(
             next_task_key=None,
-            state_repr_size=0
+            state_repr_size=0,
+            active_public_tasks=0
         )
 
     def __remove_task_state(self, task_key: str) -> None:
@@ -93,9 +94,9 @@ class TaskManager:
             else: # Enqueue usage
                 self.blocked_resource_usage[resource_key] += usage
 
-        return BlockedState(task.key, resource_constraints, visible=task.visible) \
+        return BlockedState(task.key, resource_constraints, private_mode=task.private_mode) \
                 if resource_constraints else \
-                RunningState(task.key, resource_units, visible=task.visible)
+                RunningState(task.key, resource_units, private_mode=task.private_mode)
 
     def __update_next_task_key(self) -> None:
         self.state.next_task_key = None
@@ -118,7 +119,7 @@ class TaskManager:
                 "           TaskID                                        State       Timestamp\n" + \
                 "\n".join([
                     str(task_state) for task_state in self.task_states.values()
-                    if task_state.visible
+                    if not task_state.private_mode
                 ]) + "\n"
 
     def __update_task_manager_state(self) -> None:
@@ -134,10 +135,13 @@ class TaskManager:
         self.blocked_resource_usage[resource.key] = 0
 
     def register_task(self, task: Task, timestamp: float = None) -> None:
-        self.task_states[task.key] = NewState(task.key, timestamp, task.visible)
+        self.task_states[task.key] = NewState(task.key, timestamp, task.private_mode)
         self.new_tasks_queue[task.key] = task
 
         self.state.next_task_key = None
+        
+        if not task.private_mode:
+            self.state.active_public_tasks += 1
 
     def register_worker(self, worker_key: str) -> None:
         self.worker_states[worker_key] = IdleState(worker_key)
@@ -152,7 +156,7 @@ class TaskManager:
 
             task_state = self.task_states.get(task.key)
             self.task_states[task.key] = RunningState(task.key, task_state.resource_units,
-                    visible=task.visible)
+                    private_mode=task.private_mode)
 
             self.__update_task_manager_state()
             return task
@@ -193,8 +197,12 @@ class TaskManager:
 
         if isinstance(task_state, NewState): # Requeue
             self.new_tasks_queue[task.key] = task
-        elif isinstance(task_state, DoneState) and task_state.remove_state:
-            self.__remove_task_state(task.key)
+        else:
+            if not task.private_mode:
+                self.state.active_public_tasks -= 1
+
+            if isinstance(task_state, DoneState) and task_state.remove_state:
+                self.__remove_task_state(task.key)
 
         if not resource_units:
             return
@@ -210,8 +218,12 @@ class TaskManager:
         self.__free_tasks(resource_units.keys())
         self.__update_task_manager_state()
 
-    def active_tasks(self) -> int:
-        return len(self.new_tasks_queue) + len(self.blocked_tasks_queue) + len(self.waiting_tasks_queue)
+    def active_tasks(self, public_only: bool = True) -> int:
+        if public_only:
+            return self.state.active_public_tasks
+        
+        return len(self.new_tasks_queue) + len(self.blocked_tasks_queue) + \
+                len(self.waiting_tasks_queue)
 
 if __name__ == "__main__":
     pass

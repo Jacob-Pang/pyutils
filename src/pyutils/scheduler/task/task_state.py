@@ -1,12 +1,12 @@
 import time
 
 class TaskState:
-    def __init__(self, key: str, timestamp: float = None, visible: bool = True) -> None:
+    def __init__(self, key: str, timestamp: float = None, private_mode: bool = False) -> None:
         if timestamp is None: timestamp = time.time()
 
         self.key = key
         self.timestamp = timestamp
-        self.visible = visible
+        self.private_mode = private_mode
 
     def get_state_repr(self) -> str:
         raise NotImplementedError()
@@ -19,16 +19,16 @@ class NewState (TaskState):
         return "NEW"
 
 class RunningState (TaskState):   
-    def __init__(self, key: str, resource_units: dict, timestamp: float = None, visible: bool = True) -> None:
-        super().__init__(key, timestamp, visible)
+    def __init__(self, key: str, resource_units: dict, timestamp: float = None, private_mode: bool = True) -> None:
+        super().__init__(key, timestamp, private_mode)
         self.resource_units = resource_units
 
     def get_state_repr(self) -> str:
         return "RUNNING"
 
 class DoneState (TaskState):
-    def __init__(self, key: str, timestamp: float = None, visible: bool = True, remove_state: bool = True) -> None:
-        super().__init__(key, timestamp, visible)
+    def __init__(self, key: str, timestamp: float = None, private_mode: bool = True, remove_state: bool = True) -> None:
+        super().__init__(key, timestamp, private_mode)
         self.remove_state = remove_state
 
     def get_state_repr(self) -> str:
@@ -39,8 +39,8 @@ class ExceptionState (DoneState):
         return "EXCEPTION"
 
 class BlockedState (TaskState):
-    def __init__(self, key: str, resource_constraints: set, timestamp: float = None, visible: bool = True) -> None:
-        super().__init__(key, timestamp, visible)
+    def __init__(self, key: str, resource_constraints: set, timestamp: float = None, private_mode: bool = True) -> None:
+        super().__init__(key, timestamp, private_mode)
         self.resource_constraints = resource_constraints
 
     def get_state_repr(self) -> str:
