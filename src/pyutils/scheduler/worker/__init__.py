@@ -33,8 +33,9 @@ class Worker:
                 task_manager.update_worker_state(IdleState(self.key))
 
                 timeout_time = time.time() + self.timeout
-
-        task_manager.update_worker_state(DeadState(self.key))
+        
+        with task_manager.semaphore:
+            task_manager.update_worker_state(DeadState(self.key))
 
 if __name__ == "__main__":
     pass

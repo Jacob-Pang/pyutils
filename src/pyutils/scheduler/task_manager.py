@@ -185,8 +185,8 @@ class TaskManager:
             self.blocked_tasks_queue.append(task)
             task = None
 
-        if state_change:
-            self.__update_task_manager_state()
+        #if state_change:
+        self.__update_task_manager_state()
 
         return task
 
