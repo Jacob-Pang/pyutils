@@ -19,7 +19,7 @@ class NewState (TaskState):
         return "NEW"
 
 class RunningState (TaskState):   
-    def __init__(self, key: str, resource_units: dict, timestamp: float = None, private_mode: bool = True) -> None:
+    def __init__(self, key: str, resource_units: dict, timestamp: float = None, private_mode: bool = False) -> None:
         super().__init__(key, timestamp, private_mode)
         self.resource_units = resource_units
 
@@ -27,7 +27,7 @@ class RunningState (TaskState):
         return "RUNNING"
 
 class DoneState (TaskState):
-    def __init__(self, key: str, timestamp: float = None, private_mode: bool = True, remove_state: bool = True) -> None:
+    def __init__(self, key: str, timestamp: float = None, private_mode: bool = False, remove_state: bool = True) -> None:
         super().__init__(key, timestamp, private_mode)
         self.remove_state = remove_state
 
@@ -39,7 +39,7 @@ class ExceptionState (DoneState):
         return "EXCEPTION"
 
 class BlockedState (TaskState):
-    def __init__(self, key: str, resource_constraints: set, timestamp: float = None, private_mode: bool = True) -> None:
+    def __init__(self, key: str, resource_constraints: set, timestamp: float = None, private_mode: bool = False) -> None:
         super().__init__(key, timestamp, private_mode)
         self.resource_constraints = resource_constraints
 

@@ -52,7 +52,7 @@ class TaskManager:
                 resource_constraints.add(resource_key)
             
             if resource_constraints:
-                task_state = BlockedState(task.key, resource_constraints)
+                task_state = BlockedState(task.key, resource_constraints, private_mode=task.private_mode)
                 self.task_states[task.key] = task_state
                 self.blocked_tasks_queue.append(task)
                 continue
@@ -119,7 +119,7 @@ class TaskManager:
                 "           TaskID                                        State       Timestamp\n" + \
                 "\n".join([
                     str(task_state) for task_state in self.task_states.values()
-                    # if not task_state.private_mode
+                    if not task_state.private_mode
                 ]) + "\n"
 
     def __update_task_manager_state(self) -> None:
