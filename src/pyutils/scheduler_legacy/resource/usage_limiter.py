@@ -2,7 +2,7 @@ import time
 
 from collections import deque
 from collections.abc import Iterable
-from pyutils.scheduler.resource import ResourceGate
+from pyutils.scheduler_legacy.resource import ResourceGate
 from multiprocessing import Semaphore
 
 

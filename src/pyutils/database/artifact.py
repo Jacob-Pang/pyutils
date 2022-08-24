@@ -3,7 +3,7 @@ import pickle
 import time
 
 from pyutils.database.data_node import DataNode
-from pyutils.wrappers import function_compat_kwargs
+from pyutils.wrappers import get_compat_kwargs
 
 class Artifact (DataNode):
     def make_connection_dpath(self) -> None:
@@ -35,13 +35,13 @@ class Artifact (DataNode):
 
 class PickleFile (Artifact):
     def save_data_to_path(self, artifact_data: any, path: str, pickle_dump_fn: callable = pickle.dump, **kwargs) -> None:
-        kwargs = function_compat_kwargs(pickle_dump_fn, **kwargs)
+        kwargs = get_compat_kwargs(pickle_dump_fn, **kwargs)
         
         with open(path, 'wb') as data_file:
             pickle_dump_fn(artifact_data, data_file, protocol=pickle.HIGHEST_PROTOCOL, **kwargs)
 
     def read_data_from_path(self, path: str, pickle_load_fn: callable = pickle.load, **kwargs) -> any:
-        kwargs = function_compat_kwargs(pickle_load_fn, **kwargs)
+        kwargs = get_compat_kwargs(pickle_load_fn, **kwargs)
 
         with open(path, 'rb') as data_file:
             return pickle_load_fn(data_file, **kwargs)

@@ -1,8 +1,8 @@
 import time
 
 from pyutils import generate_unique_id
-from pyutils.wrappers import FunctionWrapper
-from pyutils.scheduler.resource import Resource
+from pyutils.wrappers import WrappedFunction
+from pyutils.scheduler_legacy.resource import Resource
 
 def predicate_never(output: any):
     return False
@@ -42,7 +42,7 @@ class TaskState:
         def __repr__(self) -> str:
             return "DONE"
 
-class Task (FunctionWrapper):
+class Task (WrappedFunction):
     def __init__(self, method: callable, task_id: str = None, resource_usage: dict = dict(),
         scheduled_time: int = time.time(), reschedule_freq: int = 0, retry_on_except: int = 0,
         raise_on_except: bool = True, reschedule_pred: callable = predicate_never, **default_kwargs):

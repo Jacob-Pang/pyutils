@@ -1,5 +1,5 @@
 import time
-from pyutils.wrappers import FunctionWrapper
+from pyutils.wrappers import WrappedFunction
 
 # Element Identifiers
 class Identifier:
@@ -18,7 +18,7 @@ class CssSelectorIdentifier (Identifier):
 class WebsurferBase:
     @classmethod
     def initializer(cls: type, **kwargs) -> callable:
-        return FunctionWrapper(cls, **kwargs)
+        return WrappedFunction(cls, **kwargs)
 
     def __init__(self, headless_mode: bool = False) -> None:
         self.headless = headless_mode

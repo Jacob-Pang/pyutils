@@ -3,7 +3,7 @@ import time
 
 from collections.abc import Iterable
 from multiprocessing import Semaphore
-from pyutils.scheduler.task import Task, TaskState
+from pyutils.scheduler_legacy.task import Task, TaskState
 
 class TaskQueue:
     def __init__(self, *tasks: Task, semaphore: Semaphore = None) -> None:

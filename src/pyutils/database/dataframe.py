@@ -2,15 +2,15 @@ import pandas as pd
 
 from pyutils.database.artifact import Artifact
 from pyutils.graph_dataframe import GraphDataFrameInterface
-from pyutils.wrappers import function_compat_kwargs
+from pyutils.wrappers import get_compat_kwargs
 
 class DataFrame (Artifact):
     def save_data_to_path(self, artifact_data: pd.DataFrame, path: str, **kwargs) -> None:
-        kwargs = function_compat_kwargs(artifact_data.to_csv, **kwargs)
+        kwargs = get_compat_kwargs(artifact_data.to_csv, **kwargs)
         artifact_data.to_csv(path, index=True, **kwargs)
     
     def read_data_from_path(self, path: str, **kwargs) -> pd.DataFrame:
-        kwargs = function_compat_kwargs(pd.read_csv, **kwargs)
+        kwargs = get_compat_kwargs(pd.read_csv, **kwargs)
         return pd.read_csv(path, index_col=0, **kwargs)
 
     def merge_function(self, artifact_data: pd.DataFrame, other: pd.DataFrame) -> pd.DataFrame:

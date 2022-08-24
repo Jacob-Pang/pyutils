@@ -1,19 +1,46 @@
+import inspect
 import time
-import types
 
-class StateNamespace (types.SimpleNamespace):
-    def set_attr(self, attr_name: str, attr: any, override_attr: bool = False) -> None:
-        if hasattr(self, attr_name) and not override_attr:
-            return
-        
-        setattr(self, attr_name, attr)
+_KEYS = 0
 
-_STATE = StateNamespace(id_counter=0)
+def generate_unique_key() -> str:
+    global _KEYS
+    _KEYS = (_KEYS + 1) % 100
+    return f"{int(time.time())}{_KEYS:02}"
 
-def generate_unique_id(state: StateNamespace = _STATE) -> str:
-    state.id_counter = (state.id_counter + 1) % 100
+class WrappedFunction:
+    @staticmethod
+    def get_compat_kwargs(method: callable, **kwargs) -> dict:
+        # Returns the set of kwargs that are compatible with <method>.
+        if not kwargs: return kwargs
 
-    return f"{int(time.time())}_{state.id_counter}"
+        keywords = [
+            *inspect.getfullargspec(method)[0],  # args
+            *inspect.getfullargspec(method)[4]   # kwonlyargs
+        ]
+
+        return {kw: arg for kw, arg in kwargs.items() if kw in keywords}
+
+    def __init__(self, target_function: callable, *args: any, **kwargs: any):
+        self.target_function = target_function
+        self.args = args
+        self.kwargs = WrappedFunction.get_compat_kwargs(target_function, **kwargs)
+
+    def set_kwargs(self, kwargs: dict) -> dict:
+        for kw, arg in self.kwargs.items():
+            if kw in kwargs:
+                continue
+
+            kwargs[kw] = arg # override
+
+        return WrappedFunction.get_compat_kwargs(self.target_function, **kwargs)
+
+    def __call__(self, *args, **kwargs) -> any:
+        # Uses args if passed otherwise uses args passed on __init__.
+        kwargs = self.set_kwargs(kwargs)
+
+        return self.target_function(*args, **kwargs) if args else \
+            self.target_function(*self.args, **kwargs)
 
 if __name__ == "__main__":
     pass
