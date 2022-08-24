@@ -10,6 +10,12 @@ class Resource:
         for resource_unit in resource_units:
             self.register_unit(resource_unit)
 
+    def __str__(self) -> str:
+        return "\n".join([
+            self.units.get(unit_key).get_state_repr(self.key, usage)
+            for unit_key, usage in self.usage.items()
+        ])
+
     def register_unit(self, resource_unit: ResourceUnit) -> None:
         self.units[resource_unit.key] = resource_unit
         self.usage[resource_unit.key] = 0
@@ -27,20 +33,17 @@ class Resource:
 
         return None
 
-    def use(self, usage: int, resource_unit: ResourceUnit = None) -> None:
+    def use(self, usage: int, task_key: str, resource_unit: ResourceUnit = None) -> None:
         if not resource_unit:
             resource_unit = self.get_free_unit(usage)
 
         self.usage[resource_unit.key] = (self.usage[resource_unit.key] + usage)
 
-    def free(self, usage: int, resource_unit: ResourceUnit, update_tasks: dict) -> None:
+    def free(self, usage: int, task_key: str, resource_unit: ResourceUnit, update_tasks: dict) -> None:
         self.usage[resource_unit.key] = (self.usage[resource_unit.key] - usage)
 
-    def __str__(self) -> str:
-        return "\n".join([
-            self.units.get(unit_key).get_state_repr(self.key, usage)
-            for unit_key, usage in self.usage.items()
-        ])
+    def create_proxy(self, sync_manager: SyncManager):
+        return ResourceProxy(self, sync_manager)
 
 class ResourceProxy (Resource):
     def __init__(self, resource: Resource, sync_manager: SyncManager) -> None:

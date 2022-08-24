@@ -62,7 +62,7 @@ class TaskManager:
                 if not resource_key in resource_units:
                     resource_units[resource_key] = resource.get_free_unit(usage)
 
-                resource.use(usage, resource_units.get(resource_key))
+                resource.use(usage, task.key, resource_units.get(resource_key))
             
             task_state = WaitingState(task.key, resource_units)
             self.task_states[task.key] = task_state
@@ -89,7 +89,7 @@ class TaskManager:
             resource = self.resources.get(resource_key)
 
             if not resource_constraints:
-                resource.use(usage, resource_units.get(resource_key))
+                resource.use(usage, task.key, resource_units.get(resource_key))
             else: # Enqueue usage
                 self.blocked_resource_usage[resource_key] += usage
 
@@ -202,7 +202,7 @@ class TaskManager:
         for resource_key, resource_unit in resource_units.items():
             resource = self.resources.get(resource_key)
             usage = task.resource_usage.get(resource_key)
-            resource.free(usage, resource_unit, update_tasks)
+            resource.free(usage, task.key, resource_unit, update_tasks)
 
         for update_task, timestamp in update_tasks.items():
             self.register_task(update_task, timestamp)
