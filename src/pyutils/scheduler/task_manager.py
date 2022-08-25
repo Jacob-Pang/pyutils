@@ -83,6 +83,8 @@ class TaskManager:
         self.waiting_tasks_queue.append(task)
 
     def __process_new_tasks(self) -> None:
+        state_change = False
+
         while self.new_tasks_queue:
             if self.state.next_task_key is None:
                 self.__update_next_task_key()
@@ -90,13 +92,15 @@ class TaskManager:
             task_key = self.state.next_task_key
 
             if self.task_states.get(task_key).timestamp > time.time():
-                return # Processing timestamp constraint
+                break # Processing timestamp constraint
 
             task = self.new_tasks_queue.pop(task_key)
             self.__process_new_task(task)
             self.state.next_task_key = None
+            state_change = True
 
-        self.__update_task_manager_state()
+        if state_change:
+            self.__update_task_manager_state()
 
     def __free_blocked_tasks(self, freed_resource_keys: set) -> None:
         # Move freed blocked tasks to waiting_tasks_queue
