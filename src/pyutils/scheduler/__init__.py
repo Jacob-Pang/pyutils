@@ -51,7 +51,7 @@ class MasterProcess (Worker):
     def heartbeat(self, start_time: float) -> bool:
         task_manager = self.master_process_state.task_manager
         
-        with task_manager.semaphore():
+        with task_manager.semaphore:
             while task_manager.state.active_workers < self.master_process_state.max_workers and \
                 task_manager.state.public_pending_tasks > task_manager.state.active_workers:
 
