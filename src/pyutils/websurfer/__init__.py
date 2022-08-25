@@ -1,5 +1,5 @@
 import time
-from pyutils.wrappers import WrappedFunction
+from pyutils import WrappedFunction
 
 # Element Identifiers
 class Identifier:
