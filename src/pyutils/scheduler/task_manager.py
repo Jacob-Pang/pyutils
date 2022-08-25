@@ -25,7 +25,7 @@ class TaskManager:
         self.state = sync_manager.Namespace(
             next_task_key=None,
             state_repr_size=0,
-            pulic_pending_tasks=0,
+            public_pending_tasks=0,
             active_workers=0
         )
 
