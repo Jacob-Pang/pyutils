@@ -4,25 +4,21 @@ from multiprocessing.managers import Namespace
 from pyutils.scheduler.worker.worker_state import BusyState, IdleState, DeadState
 
 class Worker:
-    def __init__(self, key: str, task_scheduler_state: Namespace, timeout: int = 30) -> None:
+    def __init__(self, key: str, master_process_state: Namespace, timeout: int = None) -> None:
         self.key = key
         self.timeout = timeout
-        self.task_scheduler_state = task_scheduler_state
+        self.master_process_state = master_process_state
 
     def __call__(self) -> None:
-        timeout_time = time.time() + self.timeout
-        task_manager = self.task_scheduler_state.task_manager
+        start_time = time.time()
+        task_manager = self.master_process_state.task_manager
 
-        while time.time() < timeout_time:
-            if not self.task_scheduler_state.active:
-                break # Scheduler has shut down
-
-            if not task_manager.active_tasks() and not self.task_scheduler_state.listening:
-                break # No more active tasks and not listening for new tasks
-
+        while self.heartbeat(start_time):
             with task_manager.semaphore:
                 task = task_manager.dispatch_task()
-                if not task: continue
+
+                if not task: # No actionable tasks.
+                    continue
 
                 task_manager.update_worker_state(BusyState(self.key, task.key))
             
@@ -32,8 +28,26 @@ class Worker:
                 task_manager.post_update(task, task_state)
                 task_manager.update_worker_state(IdleState(self.key))
 
-                timeout_time = time.time() + self.timeout
-        
+            start_time = time.time()
+
+        self.stop()
+
+    def heartbeat(self, start_time: float) -> bool:
+        if not self.master_process_state.active: # MasterProcess has been shut down.
+            return False
+
+        if not self.master_process_state.task_manager.state.public_pending_tasks and \
+            not self.master_process_state.listening_mode:
+            return False # No public_pending_tasks and not on listening_mode.
+
+        if self.timeout: # Timeout reached
+           return time.time() <= start_time + self.timeout
+
+        return True
+
+    def stop(self) -> None:
+        task_manager = self.master_process_state.task_manager
+
         with task_manager.semaphore:
             task_manager.update_worker_state(DeadState(self.key))
 
