@@ -32,7 +32,7 @@ class UsageLimiter (Resource):
 
         update_task_key = generate_unique_key()
         update_task = Task(empty_function, key=update_task_key, resource_usage={self.key: 0},
-                delete_task_on_done=True, private_mode=True)
+                remove_task_state_on_done=True, private_mode=True)
 
         self.usage_updates[update_task_key] = (resource_unit.key, usage)
         update_tasks[update_task] = time.time() + self.window

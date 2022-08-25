@@ -181,6 +181,9 @@ class TaskManager:
         if isinstance(worker_state, DeadState):
             self.state.active_workers -= 1
 
+            if worker_state.remove_worker_state:
+                self.__remove_worker_state(worker_state.key)
+
         self.__update_task_manager_state()
 
     def dispatch_task(self) -> Task:
@@ -210,7 +213,7 @@ class TaskManager:
             if not task.private_mode:
                 self.state.public_pending_tasks += 1
             
-        elif isinstance(task_state, DoneState) and task_state.remove_state:
+        elif isinstance(task_state, DoneState) and task_state.remove_task_state:
             self.__remove_task_state(task.key)
 
         if not resource_units: return

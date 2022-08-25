@@ -4,10 +4,13 @@ from multiprocessing.managers import Namespace
 from pyutils.scheduler.worker.worker_state import BusyState, IdleState, DeadState
 
 class Worker:
-    def __init__(self, key: str, master_process_state: Namespace, timeout: int = None) -> None:
+    def __init__(self, key: str, master_process_state: Namespace, timeout: int = None,
+        remove_worker_state_on_death: bool = True) -> None:
+
         self.key = key
         self.timeout = timeout
         self.master_process_state = master_process_state
+        self.remove_worker_state_on_death = remove_worker_state_on_death
 
     def __call__(self) -> None:
         start_time = time.time()
@@ -49,7 +52,9 @@ class Worker:
         task_manager = self.master_process_state.task_manager
 
         with task_manager.semaphore:
-            task_manager.update_worker_state(DeadState(self.key))
+            task_manager.update_worker_state(
+                DeadState(self.key, remove_worker_state=self.remove_worker_state_on_death)
+            )
 
 if __name__ == "__main__":
     pass

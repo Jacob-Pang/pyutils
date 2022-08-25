@@ -30,8 +30,9 @@ class IdleState (WorkerState):
         return "IDLE"
 
 class DeadState (WorkerState):
-    def __init__(self, key: str, timestamp: float = None) -> None:
+    def __init__(self, key: str, timestamp: float = None, remove_worker_state: bool = True) -> None:
         super().__init__(key, timestamp)
+        self.remove_worker_state = remove_worker_state
         
     def get_state_repr(self) -> str:
         return "DEAD"

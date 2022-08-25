@@ -10,7 +10,7 @@ def never_predicate(output: any) -> bool:
 class Task (WrappedFunction):
     def __init__(self, target_function: callable, key: str, *args: any, resource_usage: dict = dict(),
         reschedule_pred: callable = never_predicate, reschedule_freq: float = 0, raise_on_except: bool = True,
-        delete_task_on_done: bool = False, private_mode: bool = False, **kwargs: any):
+        remove_task_state_on_done: bool = False, private_mode: bool = False, **kwargs: any):
         """ Parameters:
             target_function (callable): The function to run on job execution.
             key (str): Unique key identifier.
@@ -20,7 +20,7 @@ class Task (WrappedFunction):
             reschedule_freq (float, opt): The frequency at which to reschedule the job. This frequency
                     excludes execution time / rescheduled with respect from the start of execution.
             raise_on_except (bool, opt): Whether to raise exceptions.
-            delete_task_on_done (bool, opt): Whether to delete the task from the task_manager on finish.
+            remove_task_state_on_done (bool, opt): Whether to remove the task from the task_manager on finish.
             *args, **kwargs (opt): Arguments and keyword-arguments to pass during execution.
         """
         super().__init__(target_function, *args, **kwargs)
@@ -31,7 +31,7 @@ class Task (WrappedFunction):
         self.reschedule_pred = reschedule_pred
         self.raise_on_except = raise_on_except
 
-        self.delete_task_on_done = delete_task_on_done
+        self.remove_task_state_on_done = remove_task_state_on_done
         self.private_mode = private_mode
 
     def __call__(self, *args, **kwargs) -> TaskState:
@@ -42,11 +42,12 @@ class Task (WrappedFunction):
             if self.raise_on_except:
                 raise exception
             
-            return ExceptionState(self.key, time.time(), private_mode=self.private_mode, remove_state=self.delete_task_on_done)
+            return ExceptionState(self.key, time.time(), private_mode=self.private_mode,
+                    remove_task_state=self.remove_task_state_on_done)
 
         return NewState(self.key, max(start_time + self.reschedule_freq, time.time()), self.private_mode) \
                 if self.reschedule_pred(output) else \
-                DoneState(self.key, private_mode=self.private_mode, remove_state=self.delete_task_on_done)
+                DoneState(self.key, private_mode=self.private_mode, remove_task_state=self.remove_task_state_on_done)
 
 if __name__ == "__main__":
     pass

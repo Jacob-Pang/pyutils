@@ -9,7 +9,7 @@ from pyutils.scheduler.worker import Worker
 
 class MasterProcess (Worker):
     def __init__(self, sync_manager: SyncManager, verbose: bool = True, timeout: int = None,
-        max_workers: int = 1, listening_mode: bool = False) -> None:
+        max_workers: int = 1) -> None:
 
         self.worker_timeout = timeout
         self.worker_processes = dict()
@@ -21,7 +21,11 @@ class MasterProcess (Worker):
             task_manager=TaskManager(sync_manager, verbose=verbose)
         )
 
-        Worker.__init__(self, "__MASTER__", master_process_state, None)
+        Worker.__init__(self, "__MASTER__", master_process_state, timeout=None,
+                remove_worker_state_on_death=False)
+
+    def set_listening_mode(self, listening_mode: bool) -> None:
+        self.master_process_state.listening_mode = listening_mode
 
     def register_task(self, task: Task, timestamp: float = None) -> None:
         task_manager = self.master_process_state.task_manager

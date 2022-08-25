@@ -27,9 +27,11 @@ class RunningState (TaskState):
         return "RUNNING"
 
 class DoneState (TaskState):
-    def __init__(self, key: str, timestamp: float = None, private_mode: bool = False, remove_state: bool = True) -> None:
+    def __init__(self, key: str, timestamp: float = None, private_mode: bool = False,
+        remove_task_state: bool = True) -> None:
+
         super().__init__(key, timestamp, private_mode)
-        self.remove_state = remove_state
+        self.remove_task_state = remove_task_state
 
     def get_state_repr(self) -> str:
         return "DONE"
