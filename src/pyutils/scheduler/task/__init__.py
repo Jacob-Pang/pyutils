@@ -7,6 +7,9 @@ from pyutils.scheduler.task.task_state import NewState, DoneState, ExceptionStat
 def never_predicate(output: any) -> bool:
     return False 
 
+def always_predicate(output: any) -> bool:
+    return True
+
 class Task (WrappedFunction):
     def __init__(self, target_function: callable, key: str, *args: any, resource_usage: dict = dict(),
         reschedule_pred: callable = never_predicate, reschedule_freq: float = 0, raise_on_except: bool = True,
