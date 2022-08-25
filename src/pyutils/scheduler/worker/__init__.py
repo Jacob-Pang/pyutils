@@ -36,15 +36,15 @@ class Worker:
         self.stop()
 
     def heartbeat(self, start_time: float) -> bool:
+        if self.timeout and time.time() <= start_time + self.timeout: # Timeout reached
+           return False
+
         if not self.master_process_state.active: # MasterProcess has been shut down.
             return False
 
         if not self.master_process_state.task_manager.state.public_pending_tasks and \
             not self.master_process_state.listening_mode:
             return False # No public_pending_tasks and not on listening_mode.
-
-        if self.timeout: # Timeout reached
-           return time.time() <= start_time + self.timeout
 
         return True
 
