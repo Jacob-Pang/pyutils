@@ -10,6 +10,9 @@ def never_predicate(output: any) -> bool:
 def always_predicate(output: any) -> bool:
     return True
 
+def bool_value_predicate(output: any) -> bool:
+    return bool(output)
+
 class Task (WrappedFunction):
     def __init__(self, target_function: callable, key: str, *args: any, resource_usage: dict = dict(),
         reschedule_pred: callable = never_predicate, reschedule_freq: float = 0, raise_on_except: bool = True,
