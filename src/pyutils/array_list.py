@@ -11,7 +11,11 @@ class FixedArrayList:
         )
 
         if not init_array_values is None:
-            self.data[:init_array_values.shape[0]] = init_array_values
+            self.data[:init_array_values.shape[0]] = (
+                init_array_values if init_array_values.shape[0] <= self.shape[0] else
+                init_array_values[-self.shape[0]:]
+            )
+
             self.size = init_array_values.shape[0]
 
     def __get_tail_index(self) -> int:
