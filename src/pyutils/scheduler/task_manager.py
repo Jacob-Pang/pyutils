@@ -138,7 +138,7 @@ class TaskManager:
                 "\n".join([str(resource) for resource in self.resources.values()]) + "\n\n" + \
                 "           WorkerID                                      State       TaskID                      Duration\n" + \
                 "\n".join([str(worker_state) for worker_state in self.worker_states.values()]) + "\n\n" + \
-                "           TaskID                                        State       Timestamp\n" + \
+                "           TaskID                                        State       Timestamp         Run\n" + \
                 "\n".join([
                     str(task_state) for task_state in self.task_states.values()
                     if not task_state.private_mode

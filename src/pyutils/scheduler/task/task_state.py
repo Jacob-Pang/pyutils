@@ -23,7 +23,7 @@ class TaskState:
 
     def __str__(self) -> str:
         return f"TASK     | {self.key:<43} [ {self.get_state_repr():<9} | {int(self.timestamp):<15} |" + \
-                f" {self.get_run_count():<4} ]"
+                f" {self.get_run_count():>4} ]"
 
 class NewState (TaskState):
     def get_run_count(self) -> int:
