@@ -16,7 +16,7 @@ class Task (WrappedFunction):
     def __init__(self, target_function: callable, key: str, *args: any, resource_usage: dict = dict(),
         reschedule_pred: callable = never_predicate, reschedule_freq: float = 0, retry_on_except: int = 0,
         raise_on_except: bool = True, retry_freq: float = 0, remove_task_state_on_done: bool = False,
-        private_mode: bool = False, **kwargs: any) -> None:
+        visible_mode: bool = True, private_mode: bool = False, **kwargs: any) -> None:
         """ Parameters:
             target_function (callable): The function to run on job execution.
             key (str): Unique key identifier.
@@ -45,6 +45,7 @@ class Task (WrappedFunction):
 
         self.remove_task_state_on_done = remove_task_state_on_done
         self.private_mode = private_mode
+        self.visible_mode = visible_mode
 
         self.run_count = 0
         self.retry_attempts = 0

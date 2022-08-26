@@ -12,6 +12,7 @@ class TaskState:
         self.run_count = task.run_count
         self.retry_attempts = task.retry_attempts
 
+        self.visible_mode = task.visible_mode
         self.private_mode = task.private_mode
 
     def get_run_count(self) -> int:
@@ -23,7 +24,7 @@ class TaskState:
 
     def __str__(self) -> str:
         return f"TASK     | {self.key:<43} [ {self.get_state_repr():<9} | {int(self.timestamp):<15} |" + \
-                f" {self.get_run_count():>4} ]"
+                f" {self.get_run_count():<4} ]"
 
 class NewState (TaskState):
     def get_run_count(self) -> int:

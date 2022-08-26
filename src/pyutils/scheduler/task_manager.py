@@ -141,7 +141,7 @@ class TaskManager:
                 "           TaskID                                        State       Timestamp         Run\n" + \
                 "\n".join([
                     str(task_state) for task_state in self.task_states.values()
-                    if not task_state.private_mode
+                    if task_state.visible_mode
                 ]) + "\n"
 
     def __update_task_manager_state(self) -> None:
