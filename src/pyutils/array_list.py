@@ -45,6 +45,12 @@ class FixedArrayList:
 
         return self.data[head]
 
+    def back(self) -> any:
+        return self.data[self.head]
+
+    def front(self) -> any:
+        return self.data[(self.head + self.size - 1) % self.shape[0]]
+
     def get(self, index: int) -> any:
         return self.data[(index + self.head) % self.shape[0]]
 
