@@ -30,7 +30,7 @@ class UsageLimiter (Resource):
 
             return super().free(usage, task_key, resource_unit, update_tasks)
 
-        update_task_key = generate_unique_key()
+        update_task_key = generate_unique_key(suffix=self.key)
         update_task = Task(empty_function, key=update_task_key, resource_usage={self.key: 0},
                 remove_task_state_on_done=True, private_mode=True)
 
@@ -42,8 +42,12 @@ class UsageLimiter (Resource):
 
 class UsageLimiterProxy (UsageLimiter):
     def __init__(self, resource: UsageLimiter, sync_manager: SyncManager) -> None:
-        UsageLimiter.__init__(self, resource.key, resource.window, units=sync_manager.dict(resource.units),
-                usage=sync_manager.dict(resource.usage), usage_updates=sync_manager.dict(resource.usage_updates))
+        UsageLimiter.__init__(
+            self, resource.key, resource.window,
+            units=sync_manager.dict(resource.units),
+            usage=sync_manager.dict(resource.usage),
+            usage_updates=sync_manager.dict(resource.usage_updates)
+        )
 
 if __name__ == "__main__":
     pass
