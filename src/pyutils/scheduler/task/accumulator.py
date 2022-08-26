@@ -27,5 +27,9 @@ class ListAccumulator (Task):
         self.accumulate_to_list.append(output)
         Task.update_run(self, output, start_time, tasks_to_register)
 
+    def __call__(self, *args, tasks_to_register: dict = dict(), **kwargs) -> bool:
+        return super().__call__(*args, tasks_to_register=tasks_to_register,
+                accumulate_to_list=self.accumulate_to_list, **kwargs)
+
 if __name__ == "__main__":
     pass
