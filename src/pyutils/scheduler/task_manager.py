@@ -4,7 +4,7 @@ from multiprocessing.managers import SyncManager
 from pyutils.io import erase_stdout
 from pyutils.scheduler.resource import ResourceProxy
 from pyutils.scheduler.task import Task
-from pyutils.scheduler.task.task_state import DoneState, NewState, TaskState, RunningState, BlockedState, WaitingState
+from pyutils.scheduler.task.task_state import DoneState, NewState, RunningState, BlockedState, WaitingState
 from pyutils.scheduler.worker.worker_state import DeadState, WorkerState, IdleState
 
 class TaskManager:
@@ -28,12 +28,6 @@ class TaskManager:
             public_pending_tasks=0,
             active_workers=0
         )
-
-    def __remove_task_state(self, task_key: str) -> None:
-        self.task_states.pop(task_key)
-
-    def __remove_worker_state(self, worker_key: str) -> None:
-        self.worker_states.pop(worker_key)
 
     def __update_next_task_key(self) -> None:
         self.state.next_task_key = None
@@ -67,9 +61,7 @@ class TaskManager:
             for resource_key, usage in task.resource_usage.items():
                 self.blocked_resource_usage[resource_key] += usage
 
-            self.task_states[task.key] = BlockedState(task.key, resource_constraints,
-                    private_mode=task.private_mode)
-
+            self.task_states[task.key] = BlockedState(task, resource_constraints)
             return self.blocked_tasks_queue.append(task)
         
         # Push to waiting_tasks_queue
@@ -77,9 +69,7 @@ class TaskManager:
             resource = self.resources.get(resource_key)
             resource.use(usage, task.key, resource_units.get(resource_key))
         
-        self.task_states[task.key] = WaitingState(task.key, resource_units,
-                private_mode=task.private_mode)
-        
+        self.task_states[task.key] = WaitingState(task, resource_units)
         self.waiting_tasks_queue.append(task)
 
     def __process_new_tasks(self) -> None:
@@ -124,7 +114,7 @@ class TaskManager:
                 resource_constraints.add(resource_key)
             
             if resource_constraints:
-                task_state = BlockedState(task.key, resource_constraints, private_mode=task.private_mode)
+                task_state = BlockedState(task, resource_constraints)
                 self.task_states[task.key] = task_state
                 self.blocked_tasks_queue.append(task)
                 continue
@@ -137,7 +127,7 @@ class TaskManager:
 
                 resource.use(usage, task.key, resource_units.get(resource_key))
             
-            task_state = WaitingState(task.key, resource_units)
+            task_state = WaitingState(task, resource_units)
             self.task_states[task.key] = task_state
             self.waiting_tasks_queue.append(task)
 
@@ -162,14 +152,17 @@ class TaskManager:
         self.state.state_repr_size = state_repr.count('\n') + 1
         print(state_repr)
 
+    def get_waiting_tasks_count(self) -> int:
+        return len(self.waiting_tasks_queue)
+
+    # Registration methods
     def register_resource(self, resource: ResourceProxy) -> None:
         self.resources[resource.key] = resource
         self.blocked_resource_usage[resource.key] = 0
 
     def register_task(self, task: Task, timestamp: float = None) -> None:
-        self.task_states[task.key] = NewState(task.key, timestamp, task.private_mode)
+        self.task_states[task.key] = NewState(task, timestamp)
         self.new_tasks_queue[task.key] = task
-
         self.state.next_task_key = None
         
         if not task.private_mode:
@@ -179,6 +172,7 @@ class TaskManager:
         self.worker_states[worker_key] = IdleState(worker_key)
         self.state.active_workers += 1
 
+    # Execution and update methods
     def update_worker_state(self, worker_state: WorkerState) -> None:
         self.worker_states[worker_state.key] = worker_state
 
@@ -186,55 +180,49 @@ class TaskManager:
             self.state.active_workers -= 1
 
             if worker_state.remove_worker_state:
-                self.__remove_worker_state(worker_state.key)
+                self.worker_states.pop(worker_state.key)
 
         self.__update_task_manager_state()
 
     def dispatch_task(self) -> Task:
         self.__process_new_tasks()
-
-        if not self.waiting_tasks_queue: # Empty task queue
-            return None
+        if not self.waiting_tasks_queue: return None
 
         task = self.waiting_tasks_queue.pop(0)
-        
-        if not task.private_mode:
+
+        if not task.private_mode: # Update transition from waiting to running.
             self.state.public_pending_tasks -= 1
 
         task_state = self.task_states.get(task.key)
-        self.task_states[task.key] = RunningState(task.key, task_state.resource_units, private_mode=task.private_mode)
+        self.task_states[task.key] = RunningState(task, task_state.resource_units)    
         self.__update_task_manager_state()
+
         return task
 
-    def post_update(self, task: Task, task_state: TaskState) -> None:
+    def post_update(self, task: Task, task_state: DoneState) -> None:
         resource_units = self.task_states.get(task.key).resource_units
         self.task_states[task.key] = task_state
-        update_tasks = dict()
 
-        if isinstance(task_state, NewState): # Requeue
-            self.new_tasks_queue[task.key] = task
+        if task_state.remove_task_state:
+            self.task_states.pop(task.key)
 
-            if not task.private_mode:
-                self.state.public_pending_tasks += 1
-            
-        elif isinstance(task_state, DoneState) and task_state.remove_task_state:
-            self.__remove_task_state(task.key)
+        for _task, timestamp in task_state.tasks_to_register.items():
+            self.register_task(_task, timestamp)
 
+        # Update resources and generate resource-update tasks
         if not resource_units: return
+        update_tasks = dict()
 
         for resource_key, resource_unit in resource_units.items():
             resource = self.resources.get(resource_key)
             usage = task.resource_usage.get(resource_key)
             resource.free(usage, task.key, resource_unit, update_tasks)
 
-        for update_task, timestamp in update_tasks.items():
-            self.register_task(update_task, timestamp)
+        for _task, timestamp in update_tasks.items():
+            self.register_task(_task, timestamp)
 
         self.__free_blocked_tasks(resource_units.keys())
         self.__update_task_manager_state()
-
-    def get_waiting_tasks_count(self) -> int:
-        return len(self.waiting_tasks_queue)
 
 if __name__ == "__main__":
     pass
