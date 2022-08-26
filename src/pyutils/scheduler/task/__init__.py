@@ -43,7 +43,10 @@ class Task (WrappedFunction):
     def __call__(self, *args, **kwargs) -> TaskState:
         start_time = time.time()
 
-        try:   output = super().__call__(*args, **kwargs)
+        try:
+            output = super().__call__(*args, **kwargs)
+            self.update_output(output)
+
         except Exception as exception:
             if self.raise_on_except:
                 raise exception
@@ -54,6 +57,9 @@ class Task (WrappedFunction):
         return NewState(self.key, max(start_time + self.reschedule_freq, time.time()), self.private_mode) \
                 if self.reschedule_pred(output) else \
                 DoneState(self.key, private_mode=self.private_mode, remove_task_state=self.remove_task_state_on_done)
+
+    def update_output(self, output: any) -> None:
+        pass
 
 if __name__ == "__main__":
     pass
