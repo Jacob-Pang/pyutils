@@ -1,6 +1,7 @@
 import time
 
 from multiprocessing.managers import Namespace
+from pyutils.scheduler.task.task_state import DoneState, ExceptionState
 from pyutils.scheduler.worker.worker_state import BusyState, IdleState, DeadState
 
 class Worker:
@@ -25,8 +26,10 @@ class Worker:
 
                 task_manager.update_worker_state(BusyState(self.key, task.key))
             
-            task_state = task()
-
+            tasks_to_register = dict()
+            task_state = DoneState(task, tasks_to_register) if task(tasks_to_register=tasks_to_register) else \
+                    ExceptionState(task, tasks_to_register)
+            
             with task_manager.semaphore:
                 task_manager.post_update(task, task_state)
                 task_manager.update_worker_state(IdleState(self.key))
