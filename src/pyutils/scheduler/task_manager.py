@@ -133,7 +133,8 @@ class TaskManager:
             self.waiting_tasks_queue.append(task)
 
     def __str__(self) -> str:
-        return f"TIME : {time.time()}\n" + \
+        return  f"Timestamp   : {int(time.time())}\n" + \
+                f"ActiveTasks : {self.state.public_active_tasks}\n" + \
                 "-------------------------------------------------------------------------------------------------------------------\n" + \
                 "           ResourceID             UnitID                 Usage / Capacity\n" + \
                 "\n".join([str(resource) for resource in self.resources.values()]) + "\n\n" + \
