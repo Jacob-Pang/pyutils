@@ -206,6 +206,8 @@ class TaskManager:
         if task_state.remove_task_state:
             self.task_states.pop(task.key)
 
+        print(task_state.tasks_to_register)
+        
         for _task, timestamp in task_state.tasks_to_register.items():
             self.register_task(_task, timestamp)
 

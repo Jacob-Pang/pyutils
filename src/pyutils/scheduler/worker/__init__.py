@@ -29,6 +29,8 @@ class Worker:
             tasks_to_register = dict()
             task_state = DoneState(task, tasks_to_register) if task(tasks_to_register=tasks_to_register) else \
                     ExceptionState(task, tasks_to_register)
+
+            print(tasks_to_register)
             
             with task_manager.semaphore:
                 task_manager.post_update(task, task_state)
