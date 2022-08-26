@@ -69,7 +69,6 @@ class Task (WrappedFunction):
     def __call__(self, *args, tasks_to_register: dict = dict(), **kwargs) -> bool:
         # Returns task execution state
         start_time = time.time()
-        tasks_to_register = dict() # {Task: timestamp}
 
         try:
             output = super().__call__(*args, **kwargs, tasks_to_register=tasks_to_register)
