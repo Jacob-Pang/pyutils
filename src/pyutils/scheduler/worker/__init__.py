@@ -40,7 +40,7 @@ class Worker:
 
     def heartbeat(self, start_time: float) -> bool:
         if self.timeout and time.time() <= start_time + self.timeout: # Timeout reached
-           return False
+            return False
 
         if not self.master_process_state.active: # MasterProcess has been shut down.
             return False

@@ -26,6 +26,7 @@ class TaskManager:
             next_task_key=None,
             state_repr_size=0,
             public_pending_tasks=0,
+            public_active_tasks=0,
             active_workers=0
         )
 
@@ -167,6 +168,7 @@ class TaskManager:
         
         if not task.private_mode:
             self.state.public_pending_tasks += 1
+            self.state.public_active_tasks += 1
 
     def register_worker(self, worker_key: str) -> None:
         self.worker_states[worker_key] = IdleState(worker_key)
@@ -202,6 +204,9 @@ class TaskManager:
     def post_update(self, task: Task, task_state: DoneState) -> None:
         resource_units = self.task_states.get(task.key).resource_units
         self.task_states[task.key] = task_state
+
+        if not task.private_mode:
+            self.state.public_active_tasks -= 1
 
         if task_state.remove_task_state:
             self.task_states.pop(task.key)

@@ -62,14 +62,22 @@ class MasterProcess (Worker):
                 worker_process = self.spawn_worker_process()
                 worker_process.start()
         
-        return super().heartbeat(start_time)
+        if not self.master_process_state.active: # MasterProcess has been shut down.
+            return False
+
+        if not self.master_process_state.task_manager.state.public_active_tasks and \
+            not self.master_process_state.listening_mode:
+            return False # No public_active_tasks and not on listening_mode.
+
+        return True
 
     def stop(self) -> None:
         self.master_process_state.active = False
-        super().stop()
 
         for worker_process in self.worker_processes.values():
             worker_process.join()
+        
+        super().stop()
 
 if __name__ == "__main__":
     pass
