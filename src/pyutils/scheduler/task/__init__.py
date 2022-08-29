@@ -3,6 +3,7 @@ import time
 from pyutils import generate_unique_key
 from pyutils.wrapper import WrappedFunction
 from pyutils.scheduler.task.repeat_predicate import RepeatPredicate, CounterPredicate
+from pyutils.scheduler.state.task_state import TaskState
 
 class Task (WrappedFunction):
     def __init__(self, target_function: callable, *args: any, key: str = None, resource_usage: dict = dict(),
@@ -60,14 +61,14 @@ class Task (WrappedFunction):
         self.retry_attempts += 1
         tasks_to_register[self] = time.time() + self.retry_freq
 
-    def __call__(self, *args, assigned_resource_units: dict = dict(), tasks_to_register: dict = dict(), **kwargs) -> bool:
+    def __call__(self, *args, resource_units: dict = dict(), tasks_to_register: dict = dict(), **kwargs) -> bool:
         # Returns task execution state
         start_time = time.time()
 
         try:
             output = super().__call__(
                 *args, **kwargs,
-                assigned_resource_units=assigned_resource_units,
+                assigned_resource_units=resource_units,
                 tasks_to_register=tasks_to_register
             )
 
@@ -78,6 +79,17 @@ class Task (WrappedFunction):
             self.update_exception(exception, tasks_to_register)
 
             return False
+
+    def create_task_state(self, task_state_type: type, timestamp: float = None, **kwargs) -> TaskState:
+        return task_state_type(
+            **kwargs,
+            key=self.key,
+            run_count=self.run_count,
+            retry_attempts=self.retry_attempts,
+            visible=self.visible,
+            private=self.private,
+            timestamp=timestamp
+        )
 
 if __name__ == "__main__":
     pass

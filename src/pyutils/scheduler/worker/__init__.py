@@ -1,9 +1,10 @@
 import time
 
 from multiprocessing.managers import Namespace
-from pyutils.scheduler.task_manager import TaskManager
-from pyutils.scheduler.task.task_state import DoneState, ExceptionState
-from pyutils.scheduler.worker.worker_state import BusyState, IdleState, DeadState
+
+from pyutils.scheduler.task.task_manager import TaskManager
+from pyutils.scheduler.state.task_state import DoneState, ExceptionState
+from pyutils.scheduler.state.worker_state import BusyState, IdleState, DeadState
 
 class Worker:
     def __init__(self, key: str, task_manager: TaskManager, master_process_state: Namespace,

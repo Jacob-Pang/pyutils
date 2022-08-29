@@ -1,19 +1,18 @@
 import time
 
-from pyutils.scheduler.task import Task
-
 class TaskState:
-    # Sanpshot of the state of the task.
-    def __init__(self, task: Task, timestamp: float = None) -> None:
+    def __init__(self, key: str, run_count: int, retry_attempts: int, visible: bool, private: bool,
+        timestamp: float = None) -> None:
+
         if timestamp is None:
             timestamp = time.time()
 
-        self.key = task.key
+        self.key = key
+        self.run_count = run_count
+        self.retry_attempts = retry_attempts
+        self.visible = visible
+        self.private = private
         self.timestamp = timestamp
-        self.run_count = task.run_count
-        self.retry_attempts = task.retry_attempts
-        self.visible_mode = task.visible_mode
-        self.private_mode = task.private_mode
 
     def get_run_count(self) -> int:
         # Interpretation of run_count based on state
@@ -37,9 +36,11 @@ class NewState (TaskState):
         return "NEW"
 
 class RunningState (TaskState):   
-    def __init__(self, task: Task, assigned_resource_units: dict, timestamp: float = None) -> None:
-        super().__init__(task, timestamp)
-        self.resource_units = assigned_resource_units
+    def __init__(self, resource_units: dict, key: str, run_count: int, retry_attempts: int,
+        visible: bool, private: bool, timestamp: float = None) -> None:
+
+        super().__init__(key, run_count, retry_attempts, visible, private, timestamp)
+        self.resource_units = resource_units
 
     def get_run_count(self) -> int:
         return self.run_count + 1
@@ -48,8 +49,10 @@ class RunningState (TaskState):
         return "RUNNING"
 
 class BlockedState (TaskState):
-    def __init__(self, task: Task, resource_constraints: set, timestamp: float = None) -> None:
-        super().__init__(task, timestamp)
+    def __init__(self, resource_constraints: set, key: str, run_count: int, retry_attempts: int,
+        visible: bool, private: bool, timestamp: float = None) -> None:
+
+        super().__init__(key, run_count, retry_attempts, visible, private, timestamp)
         self.resource_constraints = resource_constraints
 
     def get_run_count(self) -> int:
@@ -59,9 +62,11 @@ class BlockedState (TaskState):
         return f"BLOCKED"
 
 class DoneState (TaskState):
-    def __init__(self, task: Task, tasks_to_register: dict, timestamp: float = None) -> None:
-        super().__init__(task, timestamp)
-        self.remove_task_state = task.remove_task_state_on_done
+    def __init__(self, remove_task_state: bool, tasks_to_register: dict, key: str, run_count: int,
+        retry_attempts: int, visible: bool, private: bool, timestamp: float = None) -> None:
+
+        super().__init__(key, run_count, retry_attempts, visible, private, timestamp)
+        self.remove_task_state = remove_task_state
         self.tasks_to_register = tasks_to_register
 
     def get_state_repr(self) -> str:

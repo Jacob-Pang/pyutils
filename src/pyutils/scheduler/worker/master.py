@@ -3,10 +3,10 @@ import multiprocessing
 from multiprocessing import Process
 
 from pyutils import generate_unique_key
-from pyutils.scheduler.task import Task
 from pyutils.scheduler.resource import Resource
-from pyutils.scheduler.task_manager import TaskManager
+from pyutils.scheduler.task import Task
 from pyutils.scheduler.worker import Worker
+from pyutils.scheduler.task.task_manager import TaskManager
 
 class MasterProcess (Worker):
     def __init__(self, verbose: bool = True, timeout: int = None, max_workers: int = 1) -> None:

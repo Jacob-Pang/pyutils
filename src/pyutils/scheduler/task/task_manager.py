@@ -7,8 +7,8 @@ from pyutils.io import erase_stdout
 from pyutils.wrapper import WrapperMetaclass
 from pyutils.scheduler.resource import Resource
 from pyutils.scheduler.task import Task
-from pyutils.scheduler.task.task_state import NewState,  WaitingState, RunningState, DoneState, BlockedState
-from pyutils.scheduler.worker.worker_state import DeadState, WorkerState, IdleState
+from pyutils.scheduler.state.task_state import NewState, WaitingState, RunningState, DoneState, BlockedState
+from pyutils.scheduler.state.worker_state import DeadState, WorkerState, IdleState
 
 class WrappedListProxy (list, metaclass=WrapperMetaclass, wrapped_class=ListProxy):
     def __init__(self, sync_manager: SyncManager) -> None:
@@ -63,7 +63,7 @@ class TaskManager:
         self.blocked_resource_usage[resource.key] = 0
 
     def register_task(self, task: Task, timestamp: float = None) -> None:
-        self.task_states[task.key] = NewState(task, timestamp)
+        self.task_states[task.key] = task.create_task_state(NewState, timestamp)
         self.new_tasks[task.key] = task
         
         if not task.private:
@@ -97,7 +97,7 @@ class TaskManager:
                 for resource_key, usage in task.resource_usage.items():
                     self.blocked_resource_usage[resource_key] += usage
 
-                self.task_states[task.key] = BlockedState(task, resource_constraints)
+                self.task_states[task.key] = task.create_task_state(BlockedState, resource_constraints=resource_constraints)
                 return self.blocked_tasks.append(task)
             
             # Push to waiting_tasks
@@ -105,7 +105,7 @@ class TaskManager:
                 resource = self.resources.get(resource_key)
                 resource.use(usage, task.key, resource_units.get(resource_key))
             
-            self.task_states[task.key] = WaitingState(task, resource_units)
+            self.task_states[task.key] = task.create_task_state(WaitingState, resource_units=resource_units)
             self.waiting_tasks.append(task)
         
         change_in_state = False
@@ -144,7 +144,7 @@ class TaskManager:
                 resource_constraints.add(resource_key)
             
             if resource_constraints:
-                task_state = BlockedState(task, resource_constraints)
+                task_state = task.create_task_state(BlockedState, resource_constraints=resource_constraints)
                 self.task_states[task.key] = task_state
                 self.blocked_tasks.append(task)
                 continue
@@ -157,7 +157,7 @@ class TaskManager:
 
                 resource.use(usage, task.key, resource_units.get(resource_key))
             
-            task_state = WaitingState(task, resource_units)
+            task_state = task.create_task_state(WaitingState, resource_units=resource_units)
             self.task_states[task.key] = task_state
             self.waiting_tasks.append(task)
 
@@ -211,13 +211,13 @@ class TaskManager:
             self.manager_state.public_pending_tasks -= 1
 
         task_state = self.task_states.get(task.key)
-        self.task_states[task.key] = RunningState(task, task_state.assigned_resource_units)    
+        self.task_states[task.key] = task.create_task_state(RunningState, resource_units=task_state.resource_units)    
         self.log_task_manager_state()
 
         return task
 
     def post_update(self, task: Task, task_state: DoneState) -> None:
-        resource_units = self.task_states.get(task.key).assigned_resource_units
+        resource_units = self.task_states.get(task.key).resource_units
         self.task_states[task.key] = task_state
 
         if not task.private_mode:
