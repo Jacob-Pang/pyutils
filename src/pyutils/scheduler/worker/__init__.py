@@ -28,7 +28,6 @@ class Worker:
         start_time = time.time()
 
         while self.heartbeat(start_time):
-            print(f"running {self.key}")
             with self.task_manager.semaphore:
                 task = self.task_manager.dispatch_task()
 
