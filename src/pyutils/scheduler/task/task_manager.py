@@ -266,7 +266,7 @@ class TaskManager:
         resource_units = self.task_states.get(task.key).resource_units
         self.task_states[task.key] = task_state
 
-        if not task.private_mode:
+        if not task.private:
             self.manager_state.public_active_tasks -= 1
 
         if task_state.remove_task_state:
