@@ -1,8 +1,6 @@
 import multiprocessing
 
 from multiprocessing import Process
-from multiprocessing.managers import SyncManager
-
 from pyutils import generate_unique_key
 from pyutils.scheduler.resource import Resource
 from pyutils.scheduler.task import Task
@@ -11,13 +9,13 @@ from pyutils.scheduler.task.task_manager import TaskManager
 
 class MasterProcess (Worker):
     def __init__(self, verbose: bool = True, timeout: int = None, max_workers: int = 1) -> None:
-        self.sync_manager = sync_manager = multiprocessing.Manager()
+        self.sync_manager = multiprocessing.Manager()
         self.worker_timeout = timeout
         self.worker_processes = dict()
 
         Worker.__init__(
-            self, "__MASTER__", TaskManager(sync_manager, verbose=verbose),
-            master_process_state=sync_manager.Namespace(
+            self, "__MASTER__", TaskManager(self.sync_manager, verbose=verbose),
+            master_process_state=self.sync_manager.Namespace(
                 active=True,
                 listening_mode=False,
                 max_workers=max_workers
@@ -73,6 +71,7 @@ class MasterProcess (Worker):
                 worker_process.join()
             
             super().stop()
+            self.sync_manager.shutdown()
 
     def __enter__(self, *args, **kwargs):
         return self
