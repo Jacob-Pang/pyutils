@@ -10,9 +10,8 @@ from pyutils.scheduler.worker import Worker
 from pyutils.scheduler.task.task_manager import TaskManager
 
 class MasterProcess (Worker):
-    def __init__(self, sync_manager: SyncManager, verbose: bool = True, timeout: int = None,
-        max_workers: int = 1) -> None:
-
+    def __init__(self, verbose: bool = True, timeout: int = None, max_workers: int = 1) -> None:
+        self.sync_manager = sync_manager = multiprocessing.Manager()
         self.worker_timeout = timeout
         self.worker_processes = dict()
 
@@ -36,9 +35,9 @@ class MasterProcess (Worker):
         with task_manager.semaphore:
             task_manager.register_task(task, timestamp)
 
-    def register_resource(self, sync_manager, resource: Resource) -> None:
+    def register_resource(self, resource: Resource) -> None:
         with self.task_manager.semaphore:
-            self.task_manager.register_resource(sync_manager, resource)
+            self.task_manager.register_resource(self.sync_manager, resource)
 
     def spawn_worker_process(self) -> Process:
         worker_key = generate_unique_key(prefix="W_")
@@ -67,13 +66,13 @@ class MasterProcess (Worker):
         return self()
 
     def stop(self) -> None:
-        self.master_process_state.active = False
+        if self.master_process_state.active:
+            self.master_process_state.active = False
 
-        for worker_process in self.worker_processes.values():
-            worker_process.join()
-        
-        super().stop()
-        # self.sync_manager.shutdown()
+            for worker_process in self.worker_processes.values():
+                worker_process.join()
+            
+            super().stop()
 
     def __enter__(self, *args, **kwargs):
         return self
