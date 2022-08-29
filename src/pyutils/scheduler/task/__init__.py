@@ -91,5 +91,9 @@ class Task (WrappedFunction):
             timestamp=timestamp
         )
 
+    def __lt__(self, other) -> bool:
+        # Prioritize tasks with higher retry frequency first
+        return self.retry_freq > other.retry_freq
+
 if __name__ == "__main__":
     pass

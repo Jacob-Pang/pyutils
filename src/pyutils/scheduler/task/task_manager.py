@@ -65,7 +65,6 @@ class TaskManager:
     def register_task(self, task: Task, timestamp: float = None) -> None:
         task_state = task.create_task_state(NewState, timestamp)
         self.task_states[task.key] = task_state
-        print(task_state.timestamp)
         heapq.heappush(self.new_tasks, (task_state.timestamp, task))
         
         if not task.private:
