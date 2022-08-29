@@ -11,8 +11,6 @@ from pyutils.scheduler.task.task_manager import TaskManager
 class MasterProcess (Worker):
     def __init__(self, verbose: bool = True, timeout: int = None, max_workers: int = 1) -> None:
         self.sync_manager = multiprocessing.Manager()
-        self.sync_manager.start()
-
         self.worker_timeout = timeout
         self.worker_processes = dict()
 
@@ -62,6 +60,9 @@ class MasterProcess (Worker):
             return False # No public_active_tasks and not on listening_mode.
 
         return True
+
+    def start(self) -> None:
+        return self()
 
     def stop(self) -> None:
         self.master_process_state.active = False
