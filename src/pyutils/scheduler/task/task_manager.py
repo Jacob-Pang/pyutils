@@ -1,22 +1,12 @@
-import heapq
 import time
 
-from multiprocessing.managers import SyncManager, ListProxy
+from multiprocessing.managers import SyncManager
 
 from pyutils.io import erase_stdout
-from pyutils.wrapper import WrapperMetaclass
 from pyutils.scheduler.resource import Resource
 from pyutils.scheduler.task import Task
 from pyutils.scheduler.state.task_state import NewState, WaitingState, RunningState, DoneState, BlockedState
 from pyutils.scheduler.state.worker_state import DeadState, WorkerState, IdleState
-
-class WrappedListProxy (list, metaclass=WrapperMetaclass, wrapped_class=ListProxy):
-    def __init__(self, sync_manager: SyncManager) -> None:
-        self.list_proxy = sync_manager.list()
-
-    @property
-    def wrapped_object(self) -> ListProxy:
-        return self.list_proxy
 
 class TaskManager:
     def __init__(self, sync_manager: SyncManager, verbose: bool = True) -> None:
@@ -24,7 +14,7 @@ class TaskManager:
         self.resources = sync_manager.dict() # {resource_key: Resource}
         self.task_states = sync_manager.dict() # {task_key: TaskState}
         self.worker_states = sync_manager.dict() # {worker_key: WorkerState}
-        self.new_tasks = WrappedListProxy(sync_manager) # [(timestamp, Task)]
+        self.new_tasks = sync_manager.list()
         self.blocked_tasks = sync_manager.list()
         self.waiting_tasks = sync_manager.list()
         self.blocked_resource_usage = sync_manager.dict() # {resource_key: blocked_usage}
@@ -57,19 +47,70 @@ class TaskManager:
     def active_workers(self) -> int:
         return self.manager_state.active_workers
 
+    # Custom heapq operations
+    def compare_tasks(self, task: Task, other: Task) -> bool:
+        return self.task_states.get(task.key).timestamp < self.task_states.get(other.key).timestamp 
+
+    def siftdown_new_tasks(self, startpos: int, pos: int) -> None:
+        new_task = self.new_tasks[pos]
+
+        while pos > startpos:
+            parentpos = (pos - 1) >> 1
+            parent_task = self.new_tasks[parentpos]
+
+            if self.compare_tasks(new_task, parent_task):
+                self.new_tasks[pos] = parent_task
+                pos = parentpos
+                continue
+
+            break
+
+        self.new_tasks[pos] = new_task
+
+    def siftup_new_tasks(self, pos):
+        endpos = len(self.new_tasks)
+        startpos = pos
+        new_task = self.new_tasks[pos]
+        childpos = 2 * pos + 1
+
+        while childpos < endpos:
+            rightpos = childpos + 1
+
+            if rightpos < endpos and not self.compare_tasks(self.new_tasks[childpos], self.new_tasks[rightpos]):
+                childpos = rightpos
+
+            self.new_tasks[pos] = self.new_tasks[childpos]
+            pos = childpos
+            childpos = 2 * pos + 1
+
+        self.new_tasks[pos] = new_task
+        self.siftdown_new_tasks(startpos, pos)
+
+    def heappush_new_task(self, task: Task) -> None:
+        self.new_tasks.append(task)
+        self.siftdown_new_tasks(0, len(self.new_tasks) - 1)
+
+    def heappop_new_task(self) -> Task:
+        lastelt = self.new_tasks.pop()
+
+        if self.new_tasks:
+            return_task = self.new_tasks[0]
+            self.new_tasks[0] = lastelt
+
+            self.siftup_new_tasks(0)
+            return return_task
+        
+        return lastelt
+
     # Registration methods
     def register_resource(self, sync_manager: SyncManager, resource: Resource) -> None:
         self.resources[resource.key] = resource.as_shared_proxy(sync_manager)
         self.blocked_resource_usage[resource.key] = 0
 
     def register_task(self, task: Task, timestamp: float = None) -> None:
-        task_state = task.create_task_state(NewState, timestamp)
+        self.task_states[task.key] = task.create_task_state(NewState, timestamp)
+        self.heappush_new_task(task)
 
-        self.task_states[task.key] = task_state
-        print(self.new_tasks)
-        heapq.heappush(self.new_tasks, (task_state.timestamp, task))
-        print(self.new_tasks)
-        
         if not task.private:
             self.manager_state.public_pending_tasks += 1
             self.manager_state.public_active_tasks += 1
@@ -115,12 +156,12 @@ class TaskManager:
         change_in_state = False
 
         while len(self.new_tasks):
-            timestamp, task = self.new_tasks[0]
+            task = self.new_tasks[0]
 
-            if timestamp > time.time():
+            if self.task_states.get(task.key).timestamp > time.time():
                 break # Processing timestamp constraint
 
-            heapq.heappop(self.new_tasks)
+            self.heappop_new_task()
             process_new_task(task)
             change_in_state = True
 
