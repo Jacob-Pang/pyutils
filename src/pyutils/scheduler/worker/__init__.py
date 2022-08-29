@@ -29,7 +29,7 @@ class Worker:
 
         while self.heartbeat(start_time):
             with self.task_manager.semaphore:
-                task = self.task_manager.dispatch_task()
+                task, resource_units = self.task_manager.dispatch_task()
 
                 if not task: # No actionable tasks.
                     continue
@@ -37,8 +37,12 @@ class Worker:
                 self.task_manager.update_worker_state(BusyState(self.key, task.key))
             
             tasks_to_register = dict()
-            task_state = DoneState(task, tasks_to_register) if task(tasks_to_register=tasks_to_register) else \
-                    ExceptionState(task, tasks_to_register)
+            execution_status = task(resource_units=resource_units, tasks_to_register=tasks_to_register)
+
+            task_state = task.create_task_state(DoneState, remove_task_state=task.remove_task_state_on_done,
+                    tasks_to_register=tasks_to_register) if execution_status else \
+                    task.create_task_state(ExceptionState, remove_task_state=task.remove_task_state_on_done,
+                    tasks_to_register=tasks_to_register)
             
             with self.task_manager.semaphore:
                 self.task_manager.post_update(task, task_state)

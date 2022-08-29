@@ -244,11 +244,11 @@ class TaskManager:
 
         self.log_task_manager_state()
 
-    def dispatch_task(self) -> Task:
+    def dispatch_task(self) -> tuple:
         self.process_new_tasks()
 
         if not len(self.waiting_tasks):
-            return None
+            return None, None
 
         task = self.waiting_tasks.pop(0)
 
@@ -257,9 +257,10 @@ class TaskManager:
 
         task_state = self.task_states.get(task.key)
         self.task_states[task.key] = task.create_task_state(RunningState, resource_units=task_state.resource_units)    
+        resource_units = task_state.resource_units
+        
         self.log_task_manager_state()
-
-        return task
+        return task, resource_units
 
     def post_update(self, task: Task, task_state: DoneState) -> None:
         resource_units = self.task_states.get(task.key).resource_units
