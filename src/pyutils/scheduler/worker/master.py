@@ -36,9 +36,9 @@ class MasterProcess (Worker):
         with task_manager.semaphore:
             task_manager.register_task(task, timestamp)
 
-    def register_resource(self, resource: Resource) -> None:
+    def register_resource(self, sync_manager, resource: Resource) -> None:
         with self.task_manager.semaphore:
-            self.task_manager.register_resource(resource)
+            self.task_manager.register_resource(sync_manager, resource)
 
     def spawn_worker_process(self) -> Process:
         worker_key = generate_unique_key(prefix="W_")
