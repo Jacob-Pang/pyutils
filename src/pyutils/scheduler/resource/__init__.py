@@ -4,9 +4,12 @@ from pyutils.scheduler.resource.resource_unit import ResourceUnit
 from pyutils import generate_unique_key
 
 class Resource:
-    def __init__(self, *resource_units: ResourceUnit, key: str = None, units: dict = dict(), usage: dict = dict()) -> None:
-        if not key:
-            key = generate_unique_key("R_")
+    def __init__(self, *resource_units: ResourceUnit, key: str = None, units: dict = None,
+        usage: dict = None) -> None:
+        
+        if not key: key = generate_unique_key("R_")
+        if not units: units = dict()
+        if not usage: usage = dict()
 
         self.key = key
         self.units = units

@@ -11,10 +11,12 @@ def update_usage_limiter() -> None:
     pass
 
 class UsageLimiter (Resource):
-    def __init__(self, window: int, *resource_units: ResourceUnit, key: str = None, units: dict = dict(),
-        usage: dict = dict(), usage_updates: dict = dict()) -> None:
+    def __init__(self, window: int, *resource_units: ResourceUnit, key: str = None, units: dict = None,
+        usage: dict = None, usage_updates: dict = None) -> None:
 
         super().__init__(*resource_units, key=key, units=units, usage=usage)
+        if not usage_updates: usage_updates = dict()
+
         self.window = window
         self.usage_updates = usage_updates # {update_task_key: (resource_unit_key, usage_to_free)}
 
