@@ -2,7 +2,7 @@ import pandas as pd
 
 from pyutils.database.artifact import Artifact
 from pyutils.graph_dataframe import GraphDataFrameInterface
-from pyutils import WrappedFunction
+from pyutils.wrapper import WrappedFunction
 
 class DataFrame (Artifact):
     def save_data_to_path(self, artifact_data: pd.DataFrame, path: str, **kwargs) -> None:

@@ -1,23 +1,24 @@
-from multiprocessing.managers import ListProxy
 from pyutils.scheduler.task import Task
-from pyutils.scheduler.task import never_predicate
+from pyutils.scheduler.task.repeat_predicate import RepeatPredicate, CounterPredicate
 
 class ListAccumulator (Task):
-    def __init__(self, target_function: callable, key: str, accumulate_to_list: ListProxy, *args: any,
-        resource_usage: dict = dict(), reschedule_pred: callable = never_predicate, reschedule_freq: float = 0,
-        retry_on_except: int = 0, raise_on_except: bool = True, retry_freq: float = 0,
-        remove_task_state_on_done: bool = False, private_mode: bool = False, **kwargs: any) -> None:
+    def __init__(self, target_function: callable, accumulate_to_list: list, *args: any, key: str = None,
+        resource_usage: dict = dict(), repeat_pred: RepeatPredicate = CounterPredicate, repeat_freq: float = 0,
+        retry_on_except: int = 0, raise_on_except: bool = True, retry_freq: float = 0, visible: bool = True,
+        private: bool = False, remove_task_state_on_done: bool = False, **kwargs: any) -> None:
 
         Task.__init__(
-            self, target_function, key, *args,
+            self, target_function, *args,
+            key=key,
             resource_usage=resource_usage,
-            reschedule_pred=reschedule_pred,
-            reschedule_freq=reschedule_freq,
+            repeat_pred=repeat_pred,
+            reschedule_freq=repeat_freq,
             retry_on_except=retry_on_except,
             raise_on_except=raise_on_except,
             retry_freq=retry_freq,
+            visible=visible,
+            private=private,
             remove_task_state_on_done=remove_task_state_on_done,
-            private_mode=private_mode,
             **kwargs
         )
 
@@ -28,8 +29,11 @@ class ListAccumulator (Task):
         Task.update_run(self, output, start_time, tasks_to_register)
 
     def __call__(self, *args, tasks_to_register: dict = dict(), **kwargs) -> bool:
-        return super().__call__(*args, tasks_to_register=tasks_to_register,
-                accumulate_to_list=self.accumulate_to_list, **kwargs)
+        return super().__call__(
+            *args, **kwargs,
+            tasks_to_register=tasks_to_register,
+            accumulate_to_list=self.accumulate_to_list
+        )
 
 if __name__ == "__main__":
     pass

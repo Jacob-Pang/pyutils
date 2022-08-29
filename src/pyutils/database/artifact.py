@@ -3,7 +3,7 @@ import pickle
 import time
 
 from pyutils.database.data_node import DataNode
-from pyutils import WrappedFunction
+from pyutils.wrapper import WrappedFunction
 
 class Artifact (DataNode):
     def make_connection_dpath(self) -> None:

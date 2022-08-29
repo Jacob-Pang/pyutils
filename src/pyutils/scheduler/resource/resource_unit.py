@@ -1,5 +1,10 @@
+from pyutils import generate_unique_key
+
 class ResourceUnit:
-    def __init__(self, key: str, capacity: int, **attrs: any) -> None:
+    def __init__(self, capacity: int, key: str = None, **attrs: any) -> None:
+        if not key:
+            key = generate_unique_key(prefix="RU_")
+
         self.key = key
         self.capacity = capacity
 

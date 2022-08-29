@@ -1,19 +1,20 @@
 import time
 
 from multiprocessing.managers import SyncManager
+
 from pyutils import generate_unique_key
 from pyutils.scheduler.task import Task
 from pyutils.scheduler.resource import Resource
 from pyutils.scheduler.resource.resource_unit import ResourceUnit
 
-def empty_function() -> None:
+def update_usage_limiter() -> None:
     pass
 
 class UsageLimiter (Resource):
-    def __init__(self, key: str, window: int, *resource_units: ResourceUnit, units: dict = dict(),
+    def __init__(self, window: int, *resource_units: ResourceUnit, key: str = None, units: dict = dict(),
         usage: dict = dict(), usage_updates: dict = dict()) -> None:
 
-        super().__init__(key, *resource_units, units=units, usage=usage)
+        super().__init__(*resource_units, key=key, units=units, usage=usage)
         self.window = window
         self.usage_updates = usage_updates # {update_task_key: (resource_unit_key, usage_to_free)}
 
@@ -31,28 +32,26 @@ class UsageLimiter (Resource):
             return super().free(usage, task_key, resource_unit, update_tasks)
 
         update_task_key = generate_unique_key(suffix=self.key)
+
         update_task = Task(
-            empty_function,
+            update_usage_limiter,
             key=update_task_key,
             resource_usage={self.key: 0},
             remove_task_state_on_done=True,
-            visible_mode=False,
-            private_mode=True
+            visible=False,
+            private=True
         )
 
         self.usage_updates[update_task_key] = (resource_unit.key, usage)
         update_tasks[update_task] = time.time() + self.window
 
-    def create_proxy(self, sync_manager: SyncManager):
-        return UsageLimiterProxy(self, sync_manager)
-
-class UsageLimiterProxy (UsageLimiter):
-    def __init__(self, resource: UsageLimiter, sync_manager: SyncManager) -> None:
-        UsageLimiter.__init__(
-            self, resource.key, resource.window,
-            units=sync_manager.dict(resource.units),
-            usage=sync_manager.dict(resource.usage),
-            usage_updates=sync_manager.dict(resource.usage_updates)
+    def as_shared_proxy(self, sync_manager: SyncManager):
+        return UsageLimiter(
+            self.window,
+            key=self.key,
+            units=sync_manager.dict(self.units),
+            usage=sync_manager.dict(self.usage),
+            usage_updates=sync_manager.dict(self.usage_updates)
         )
 
 if __name__ == "__main__":

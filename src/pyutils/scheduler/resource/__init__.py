@@ -1,8 +1,13 @@
 from multiprocessing.managers import SyncManager
 from pyutils.scheduler.resource.resource_unit import ResourceUnit
 
+from pyutils import generate_unique_key
+
 class Resource:
-    def __init__(self, key: str, *resource_units: ResourceUnit, units: dict = dict(), usage: dict = dict()) -> None:
+    def __init__(self, *resource_units: ResourceUnit, key: str = None, units: dict = dict(), usage: dict = dict()) -> None:
+        if not key:
+            key = generate_unique_key("R_")
+
         self.key = key
         self.units = units
         self.usage = usage
@@ -42,13 +47,8 @@ class Resource:
     def free(self, usage: int, task_key: str, resource_unit: ResourceUnit, update_tasks: dict) -> None:
         self.usage[resource_unit.key] = (self.usage[resource_unit.key] - usage)
 
-    def create_proxy(self, sync_manager: SyncManager):
-        return ResourceProxy(self, sync_manager)
-
-class ResourceProxy (Resource):
-    def __init__(self, resource: Resource, sync_manager: SyncManager) -> None:
-        Resource.__init__(self, resource.key, units=sync_manager.dict(resource.units),
-                usage=sync_manager.dict(resource.usage))
+    def as_shared_proxy(self, sync_manager: SyncManager):
+        return Resource(key=self.key, units=sync_manager.dict(self.units), usage=sync_manager.dict(self.usage))
 
 if __name__ == "__main__":
     pass

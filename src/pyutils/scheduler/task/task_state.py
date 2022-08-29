@@ -1,17 +1,17 @@
 import time
+
 from pyutils.scheduler.task import Task
 
 class TaskState:
     # Sanpshot of the state of the task.
     def __init__(self, task: Task, timestamp: float = None) -> None:
-        if timestamp is None: timestamp = time.time()
+        if timestamp is None:
+            timestamp = time.time()
 
         self.key = task.key
         self.timestamp = timestamp
-        
         self.run_count = task.run_count
         self.retry_attempts = task.retry_attempts
-
         self.visible_mode = task.visible_mode
         self.private_mode = task.private_mode
 
@@ -37,9 +37,9 @@ class NewState (TaskState):
         return "NEW"
 
 class RunningState (TaskState):   
-    def __init__(self, task: Task, resource_units: dict, timestamp: float = None) -> None:
+    def __init__(self, task: Task, assigned_resource_units: dict, timestamp: float = None) -> None:
         super().__init__(task, timestamp)
-        self.resource_units = resource_units
+        self.resource_units = assigned_resource_units
 
     def get_run_count(self) -> int:
         return self.run_count + 1
