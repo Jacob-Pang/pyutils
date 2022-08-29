@@ -1,6 +1,6 @@
-import multiprocessing
-
 from multiprocessing import Process
+from multiprocessing.managers import DictProxy, SyncManager
+
 from pyutils import generate_unique_key
 from pyutils.scheduler.resource import Resource
 from pyutils.scheduler.task import Task
@@ -8,14 +8,15 @@ from pyutils.scheduler.worker import Worker
 from pyutils.scheduler.task.task_manager import TaskManager
 
 class MasterProcess (Worker):
-    def __init__(self, verbose: bool = True, timeout: int = None, max_workers: int = 1) -> None:
-        self.sync_manager = multiprocessing.Manager()
+    def __init__(self, sync_manager: SyncManager, verbose: bool = True, timeout: int = None,
+        max_workers: int = 1) -> None:
+
         self.worker_timeout = timeout
         self.worker_processes = dict()
 
         Worker.__init__(
-            self, "__MASTER__", TaskManager(self.sync_manager, verbose=verbose),
-            master_process_state=self.sync_manager.Namespace(
+            self, "__MASTER__", TaskManager(sync_manager, verbose=verbose),
+            master_process_state=sync_manager.Namespace(
                 active=True,
                 listening_mode=False,
                 max_workers=max_workers
@@ -33,9 +34,12 @@ class MasterProcess (Worker):
         with task_manager.semaphore:
             task_manager.register_task(task, timestamp)
 
-    def register_resource(self, resource: Resource) -> None:
+    def register_resource(self, shared_resource: Resource) -> None:
+        assert isinstance(shared_resource.units, DictProxy)
+        assert isinstance(shared_resource.usage, DictProxy)
+
         with self.task_manager.semaphore:
-            self.task_manager.register_resource(self.sync_manager, resource)
+            self.task_manager.register_resource(shared_resource)
 
     def spawn_worker_process(self) -> Process:
         worker_key = generate_unique_key(prefix="W_")
@@ -71,7 +75,6 @@ class MasterProcess (Worker):
                 worker_process.join()
             
             super().stop()
-            self.sync_manager.shutdown()
 
     def __enter__(self, *args, **kwargs):
         return self

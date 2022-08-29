@@ -103,9 +103,9 @@ class TaskManager:
         return lastelt
 
     # Registration methods
-    def register_resource(self, sync_manager: SyncManager, resource: Resource) -> None:
-        self.resources[resource.key] = resource.as_shared_proxy(sync_manager)
-        self.blocked_resource_usage[resource.key] = 0
+    def register_resource(self, shared_resource: Resource) -> None:
+        self.resources[shared_resource.key] = shared_resource
+        self.blocked_resource_usage[shared_resource.key] = 0
 
     def register_task(self, task: Task, timestamp: float = None) -> None:
         self.task_states[task.key] = task.create_task_state(NewState, timestamp)
