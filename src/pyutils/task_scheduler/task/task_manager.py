@@ -10,14 +10,16 @@ from pyutils.task_scheduler.task.task_state import TaskState
 
 class TaskManagerProxy:
     def __init__(self, task_states: DictProxy, task_futures: DictProxy, end_of_task_events: DictProxy,
-        task_queue: ListProxy, task_queue_sem: Semaphore, task_manager_state: Namespace) -> None:
+        task_queue: ListProxy, task_manager_state: Namespace, task_queue_sem: Semaphore,
+        task_manager_state_sem: Semaphore) -> None:
 
         self.task_states = task_states
         self.task_futures = task_futures
         self.end_of_task_events = end_of_task_events
         self.task_queue = task_queue
-        self.task_queue_sem = task_queue_sem
         self.task_manager_state = task_manager_state
+        self.task_queue_sem = task_queue_sem
+        self.task_manager_state_sem = task_manager_state_sem
 
     @property
     def active_tasks(self) -> int:
@@ -25,7 +27,8 @@ class TaskManagerProxy:
 
     @active_tasks.setter
     def active_tasks(self, count: int) -> None:
-        self.task_manager_state.active_tasks = count
+        with self.task_manager_state_sem:
+            self.task_manager_state.active_tasks = count
 
     def update_task_state(self, task: TaskBase, state: str, timestamp: float = None) -> None:
         self.task_states[task.key] = TaskState(task.name, state, task.run_count, timestamp)
@@ -104,7 +107,8 @@ class TaskManagerProxy:
 class TaskManager (TaskManagerProxy):
     def __init__(self, sync_manager: SyncManager) -> None:
         TaskManagerProxy.__init__(self, sync_manager.dict(), sync_manager.dict(), sync_manager.dict(),
-                sync_manager.list(), sync_manager.Semaphore(1), sync_manager.Namespace(active_tasks=0))
+                sync_manager.list(), sync_manager.Namespace(active_tasks=0), sync_manager.Semaphore(1),
+                sync_manager.Semaphore(1))
 
         self.blocked_tasks = dict()
         self.resource_constraints = dict()
