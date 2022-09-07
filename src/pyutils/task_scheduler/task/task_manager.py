@@ -25,10 +25,9 @@ class TaskManagerProxy:
     def active_tasks(self) -> int:
         return self.task_manager_state.active_tasks
 
-    @active_tasks.setter
-    def active_tasks(self, count: int) -> None:
+    def update_active_tasks(self, change: int) -> None:
         with self.task_manager_state_sem:
-            self.task_manager_state.active_tasks = count
+            self.task_manager_state.active_tasks += change
 
     def update_task_state(self, task: TaskBase, state: str, timestamp: float = None) -> None:
         self.task_states[task.key] = TaskState(task.name, state, task.run_count, timestamp)
@@ -38,7 +37,7 @@ class TaskManagerProxy:
             self.task_futures[task.key] = output
             self.end_of_task_events[task.key].set()
 
-        self.active_tasks -= 1
+        self.update_active_tasks(-1)
 
     # Heapq adaptations to ensure compatibility with ListProxy
     def __task_comparator__(self, task: TaskBase, other: TaskBase) -> bool:
@@ -80,10 +79,10 @@ class TaskManagerProxy:
         self.__siftdown_task_queue__(start_pos, pos)
 
     def push_task(self, task: TaskBase) -> None:
-        with self.task_queue_sem:
-            if not task.key in self.task_states:
-                self.active_tasks += 1
+        if not task.key in self.task_states:
+            self.update_active_tasks(1)
 
+        with self.task_queue_sem:
             self.update_task_state(task, TaskState.NEW_STATE, task.start_time)
             self.task_queue.append(task)
             self.__siftdown_task_queue__(0, len(self.task_queue) - 1)

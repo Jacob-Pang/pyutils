@@ -91,7 +91,7 @@ class MasterProcess:
 
                 self.__run_task__(task, allocated_keys)
 
-            self.__display_state__()
+            self.__display_state__() # prob: done + active tasks
 
     def start(self) -> None:
         self.executor = self.executor_type(self.max_workers)
