@@ -25,6 +25,10 @@ class TaskManagerProxy:
     def active_tasks(self) -> int:
         return self.task_manager_state.active_tasks
 
+    @active_tasks.setter
+    def active_tasks(self, count: int) -> None:
+        self.task_manager_state.active_tasks = count
+
     def update_active_tasks(self, change: int) -> None:
         with self.task_manager_state_sem:
             self.task_manager_state.active_tasks += change
