@@ -87,5 +87,8 @@ class TaskScheduler:
         self.no_remaining_tasks_event.wait()
         self.stop()   
 
+    def shutdown(self) -> None:
+        self.sync_manager.shutdown()
+
 if __name__ == "__main__":
     pass

@@ -10,7 +10,7 @@ from pyutils.task_scheduler.resource.resource_manager import ResourceManagerProx
 class Task (TaskBase, WrappedFunction):
     def __init__(self, target_function: callable, *args: any, name: str = None, start_time: float = None,
         resource_usage: dict = None, runs: int = 1, repeat_freq: float = 0, retry_on_except: int = 0,
-        raise_on_except: bool = True, **kwargs: any):
+        raise_on_except: bool = True, remove_on_done: bool = True, **kwargs: any):
         """
         Parameters:
         :target_function (callable): The function to run.
@@ -23,6 +23,7 @@ class Task (TaskBase, WrappedFunction):
                 execution time.
         :retry_on_except (int, opt): The number of attempts to retry the task on exceptions.
         :raise_on_except (bool, opt): Whether to propagate any exceptions.
+        :remove_on_done (bool, opt): Whether to remove the task from TaskManager on completion.
         :args, kwargs: Arguments and keyword-arguments to pass to the function.
         """
         WrappedFunction.__init__(self, target_function, *args, **kwargs)
@@ -31,7 +32,12 @@ class Task (TaskBase, WrappedFunction):
     
     def update_end_of_run(self, output: any, task_manager_proxy: TaskManagerProxy) -> None:
         if self.run_count == self.runs:
-            return task_manager_proxy.update_end_of_task(self, output)
+            task_manager_proxy.update_end_of_task(self, output)
+
+            if self.remove_on_done:
+                task_manager_proxy.remove_task_state(self.key)
+            
+            return
         
         self.start_time += self.repeat_freq
         task_manager_proxy.push_task(self)

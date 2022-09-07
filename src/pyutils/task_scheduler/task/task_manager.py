@@ -2,6 +2,7 @@ import time
 
 from multiprocessing import Semaphore
 from multiprocessing.managers import DictProxy, ListProxy, Namespace, SyncManager
+from typing import Tuple
 
 from pyutils.task_scheduler.resource.resource_manager import ResourceManager
 from pyutils.task_scheduler.task.base import TaskBase
@@ -97,6 +98,9 @@ class TaskManagerProxy:
 
             return last_task
 
+    def remove_task_state(self, task_key: str) -> None:
+        self.task_states.pop(task_key)
+
 class TaskManager (TaskManagerProxy):
     def __init__(self, sync_manager: SyncManager) -> None:
         TaskManagerProxy.__init__(self, sync_manager.dict(), sync_manager.dict(), sync_manager.dict(),
@@ -117,7 +121,7 @@ class TaskManager (TaskManagerProxy):
 
         self.update_task_state(task, TaskState.BLOCKED_STATE, self.task_states.get(task.key).timestamp)
 
-    def process_next_task(self, resource_manager: ResourceManager) -> tuple:
+    def process_next_task(self, resource_manager: ResourceManager) -> Tuple[TaskBase, dict]:
         """ Attempts to allocate resources for the next task and return the task and the resource
         keys allocated to the execution. Blocks any task with resource constraints during processing.
 

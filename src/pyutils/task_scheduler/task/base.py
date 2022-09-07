@@ -4,8 +4,8 @@ from uuid import uuid4
 
 class TaskBase:
     def __init__(self, name: str = None, start_time: float = None, resource_usage: dict = None,
-        runs: int = 1, repeat_freq: float = 0, retry_on_except: int = 0, raise_on_except:
-        bool = True) -> None:
+        runs: int = 1, repeat_freq: float = 0, retry_on_except: int = 0, raise_on_except: bool = True,
+        remove_on_done: bool = True) -> None:
         """
         Parameters:
         :name (str, opt): The name of the task.
@@ -17,6 +17,7 @@ class TaskBase:
                 execution time.
         :retry_on_except (int, opt): The number of attempts to retry the task on exceptions.
         :raise_on_except (bool, opt): Whether to propagate any exceptions.
+        :remove_on_done (bool, opt): Whether to remove the task from TaskManager on completion.
         """
         self.key = uuid4()
 
@@ -36,6 +37,7 @@ class TaskBase:
         self.repeat_freq = repeat_freq
         self.retry_on_except = retry_on_except
         self.raise_on_except = raise_on_except
+        self.remove_on_done = remove_on_done
         self.run_count = 0
         self.retry_count = 0
 
