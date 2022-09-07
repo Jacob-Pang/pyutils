@@ -193,7 +193,8 @@ class TaskManager (TaskManagerProxy):
 
     def as_proxy(self) -> TaskManagerProxy:
         return TaskManagerProxy(self.task_states, self.task_futures, self.end_of_task_events,
-                self.task_queue, self.task_queue_sem, self.task_manager_state)
+                self.task_queue, self.task_manager_state, self.task_queue_sem,
+                self.task_manager_state_sem)
     
     def __repr__(self) -> str:
         return "\n".join([
