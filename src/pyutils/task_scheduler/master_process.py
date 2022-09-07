@@ -63,7 +63,7 @@ class MasterProcess:
             "==================================================================================\n" + \
             "RESOURCES                                    Usage\n\n" + \
             str(self.resource_manager) + \
-            "\n\nTASKS                                        State                          Runs\n\n" + \
+            f"\n\nTASKS [{self.task_manager.active_tasks:<4}]                                 State                          Runs\n\n" + \
             str(self.task_manager)
 
         self.state_repr_size = state_repr.count('\n') + 1

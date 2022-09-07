@@ -28,7 +28,7 @@ class Task (TaskBase, WrappedFunction):
         """
         WrappedFunction.__init__(self, target_function, *args, **kwargs)
         TaskBase.__init__(self, name, start_time, resource_usage, runs, repeat_freq, retry_on_except,
-                raise_on_except)
+                raise_on_except, remove_on_done)
     
     def update_end_of_run(self, output: any, task_manager_proxy: TaskManagerProxy) -> None:
         if self.run_count == self.runs:
