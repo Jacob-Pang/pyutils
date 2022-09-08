@@ -1,4 +1,4 @@
-# Adapted https://github.com/ftexchange/ftx/tree/master/websocket/websocket_manager
+# Adapted https://github.com/ftexchange/ftx/tree/master/websocket/websocket_manager.py
 import json
 import time
 
@@ -41,7 +41,7 @@ class WebsocketManager:
         # Wait for socket to connect
         ts = time.time()
         while self.ws and (not self.ws.sock or not self.ws.sock.connected):
-            if time.time() - ts > self.self.conn_timeout:
+            if time.time() - ts > self.connect_timeout:
                 self.ws = None
                 return
             time.sleep(0.1)

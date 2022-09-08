@@ -3,14 +3,14 @@ from pyutils.task_scheduler.resource.base import ResourceBase
 class ResourceRouter (ResourceBase):
     def __init__(self, key: str = None):
         ResourceBase.__init__(self, key)
-        self.resources = dict()
+        self._resources = dict()
     
     def add_resources(self, *resources: ResourceBase):
         for resource in resources:
-            self.resources[resource.key] = resource
+            self._resources[resource.key] = resource
 
     def use(self, units: int) -> str:
-        for resource_key, resource in self.resources.items():
+        for resource_key, resource in self._resources.items():
             if resource.has_free_capacity(units):
                 resource.use(units)
 
@@ -19,10 +19,10 @@ class ResourceRouter (ResourceBase):
         return None
 
     def free(self, key: str, units: int) -> None:
-        self.resources.get(key).free(key, units)
+        self._resources.get(key).free(key, units)
 
     def has_free_capacity(self, units: int) -> None:
-        for resource in self.resources.values():
+        for resource in self._resources.values():
             if resource.has_free_capacity(units):
                 return True
 
@@ -31,7 +31,7 @@ class ResourceRouter (ResourceBase):
     def update(self) -> None:
         state_change = False
 
-        for resource in self.resources.values():
+        for resource in self._resources.values():
             if resource.update():
                 state_change = True
 
@@ -40,7 +40,7 @@ class ResourceRouter (ResourceBase):
     def get_timeout_to_update(self) -> float:
         timeout = None
 
-        for resource in self.resources.values():
+        for resource in self._resources.values():
             _timeout = resource.get_timeout_to_update()
 
             if not _timeout:
@@ -54,7 +54,7 @@ class ResourceRouter (ResourceBase):
     def __repr__(self) -> str:
         return f"ALIAS {self.key}" + " {\n" + \
             "\n".join([
-                str(resource) for resource in self.resources.values()
+                str(resource) for resource in self._resources.values()
             ]) + "\n}"
 
 if __name__ == "__main__":

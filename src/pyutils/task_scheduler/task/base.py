@@ -35,11 +35,12 @@ class TaskBase:
         self.resource_usage = resource_usage
         self.runs = runs
         self.repeat_freq = repeat_freq
-        self.retry_on_except = retry_on_except
-        self.raise_on_except = raise_on_except
-        self.remove_on_done = remove_on_done
-        self.run_count = 0
-        self.retry_count = 0
+        
+        self._retry_on_except = retry_on_except
+        self._raise_on_except = raise_on_except
+        self._remove_on_done = remove_on_done
+        self._run_count = 0
+        self._retry_count = 0
 
 if __name__ == "__main__":
     pass

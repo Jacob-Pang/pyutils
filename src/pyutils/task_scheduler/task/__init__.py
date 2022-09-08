@@ -31,10 +31,10 @@ class Task (TaskBase, WrappedFunction):
                 raise_on_except, remove_on_done)
     
     def update_end_of_run(self, output: any, task_manager_proxy: TaskManagerProxy) -> None:
-        if self.run_count == self.runs:
+        if self._run_count == self.runs:
             task_manager_proxy.update_end_of_task(self, output)
 
-            if self.remove_on_done:
+            if self._remove_on_done:
                 task_manager_proxy.remove_task_state(self.key)
             
             return
@@ -49,7 +49,7 @@ class Task (TaskBase, WrappedFunction):
         task_manager_proxy.update_task_state(self, TaskState.RUNNING_STATE)
         update_event.set()
 
-        while self.retry_count <= self.retry_on_except:
+        while self.retry_count <= self._retry_on_except:
             try:
                 output = WrappedFunction.__call__(
                     self,
@@ -59,7 +59,7 @@ class Task (TaskBase, WrappedFunction):
                 )
     
                 self.retry_count = 0
-                self.run_count += 1
+                self._run_count += 1
 
                 resource_manager_proxy.update_end_of_usage(allocated_keys, self.resource_usage)
                 task_manager_proxy.update_task_state(self, TaskState.DONE_STATE)
@@ -70,7 +70,7 @@ class Task (TaskBase, WrappedFunction):
             except Exception as exception:
                 self.retry_count += 1
 
-                if self.retry_count > self.retry_on_except and self.raise_on_except:
+                if self.retry_count > self._retry_on_except and self._raise_on_except:
                     raise exception
 
         resource_manager_proxy.update_end_of_usage(allocated_keys, self.resource_usage)
