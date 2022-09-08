@@ -61,7 +61,10 @@ class TaskScheduler:
             self._update_event,
             self._no_remaining_tasks_event,
             self._master_state,
-            self.shared_namespace
+            self.shared_namespace,
+            executor_construct=executor_construct,
+            max_workers=max_workers,
+            verbose=verbose
         )
 
         self._master_process = multiprocessing.Process(target=master_process.start)
