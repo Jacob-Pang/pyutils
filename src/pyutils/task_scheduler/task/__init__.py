@@ -49,7 +49,7 @@ class Task (TaskBase, WrappedFunction):
         task_manager_proxy.update_task_state(self, TaskState.RUNNING_STATE)
         update_event.set()
 
-        while self.retry_count <= self._retry_on_except:
+        while self._retry_count <= self._retry_on_except:
             try:
                 output = WrappedFunction.__call__(
                     self,
@@ -58,7 +58,7 @@ class Task (TaskBase, WrappedFunction):
                     shared_namespace=shared_namespace
                 )
     
-                self.retry_count = 0
+                self._retry_count = 0
                 self._run_count += 1
 
                 resource_manager_proxy.update_end_of_usage(allocated_keys, self.resource_usage)
@@ -68,9 +68,9 @@ class Task (TaskBase, WrappedFunction):
 
                 return output
             except Exception as exception:
-                self.retry_count += 1
+                self._retry_count += 1
 
-                if self.retry_count > self._retry_on_except and self._raise_on_except:
+                if self._retry_count > self._retry_on_except and self._raise_on_except:
                     raise exception
 
         resource_manager_proxy.update_end_of_usage(allocated_keys, self.resource_usage)

@@ -17,10 +17,7 @@ class TaskScheduler:
         self._task_manager = TaskManager(self.sync_manager)
         self._update_event = self.sync_manager.Event()
         self._no_remaining_tasks_event = self.sync_manager.Event()
-        self._master_state = self.sync_manager.Namespace(
-            heartbeat=True,
-            description=""
-        )
+        self._master_state = self.sync_manager.Namespace(heartbeat=True, description="")
 
         self.shared_namespace = self.sync_manager.Namespace()
         self.started = False
