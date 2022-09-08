@@ -44,17 +44,17 @@ class TaskManagerProxy:
         self.update_active_tasks(-1)
 
     # Heapq adaptations to ensure compatibility with ListProxy
-    def __task_comparator__(self, task: TaskBase, other: TaskBase) -> bool:
+    def _task_comparator(self, task: TaskBase, other: TaskBase) -> bool:
         return task.start_time < other.start_time
 
-    def __siftdown_task_queue__(self, start_pos: int, pos: int) -> None:
+    def _siftdown_task_queue(self, start_pos: int, pos: int) -> None:
         new_task = self.task_queue[pos]
 
         while pos > start_pos:
             parent_pos = (pos - 1) >> 1
             parent_task = self.task_queue[parent_pos]
 
-            if not self.__task_comparator__(new_task, parent_task):
+            if not self._task_comparator(new_task, parent_task):
                 break
 
             self.task_queue[pos] = parent_task
@@ -62,7 +62,7 @@ class TaskManagerProxy:
 
         self.task_queue[pos] = new_task
 
-    def __siftup_task_queue__(self, pos: int) -> None:
+    def _siftup_task_queue(self, pos: int) -> None:
         end_pos = len(self.task_queue)
         start_pos = pos
         new_task = self.task_queue[pos]
@@ -71,7 +71,7 @@ class TaskManagerProxy:
         while child_pos < end_pos:
             right_pos = child_pos + 1
 
-            if right_pos < end_pos and not self.__task_comparator__(self.task_queue[child_pos],
+            if right_pos < end_pos and not self._task_comparator(self.task_queue[child_pos],
                     self.task_queue[right_pos]):
                 child_pos = right_pos
 
@@ -80,7 +80,7 @@ class TaskManagerProxy:
             child_pos = 2 * pos + 1
 
         self.task_queue[pos] = new_task
-        self.__siftdown_task_queue__(start_pos, pos)
+        self._siftdown_task_queue(start_pos, pos)
 
     def push_task(self, task: TaskBase) -> None:
         if not task.key in self.task_states:
@@ -89,7 +89,7 @@ class TaskManagerProxy:
         with self.task_queue_sem:
             self.update_task_state(task, TaskState.NEW_STATE, task.start_time)
             self.task_queue.append(task)
-            self.__siftdown_task_queue__(0, len(self.task_queue) - 1)
+            self._siftdown_task_queue(0, len(self.task_queue) - 1)
 
     def pop_task(self) -> TaskBase:
         with self.task_queue_sem:
@@ -99,7 +99,7 @@ class TaskManagerProxy:
                 next_task = self.task_queue[0]
                 self.task_queue[0] = last_task
 
-                self.__siftup_task_queue__(0)
+                self._siftup_task_queue(0)
                 return next_task
 
             return last_task

@@ -44,7 +44,7 @@ class MasterProcess:
 
         return min(resource_timeout, task_timeout)
 
-    def __run_task__(self, task: TaskBase, allocated_keys: dict) -> None:
+    def _run_task(self, task: TaskBase, allocated_keys: dict) -> None:
         self.executor.submit(
             task,
             allocated_keys=allocated_keys,
@@ -54,7 +54,7 @@ class MasterProcess:
             shared_namespace=self.shared_namespace
         )
 
-    def __display_state__(self) -> None:
+    def _display_state(self) -> None:
         if not self.verbose:
             return
 
@@ -69,7 +69,7 @@ class MasterProcess:
         self.state_repr_size = state_repr.count('\n') + 1
         print(state_repr)
 
-    def __master_process__(self) -> None:
+    def _run_master_process(self) -> None:
         while self.heartbeat:
             if not self.task_manager.active_tasks:
                 self.no_remaining_tasks_event.set()
@@ -81,7 +81,7 @@ class MasterProcess:
             freed_tasks = self.task_manager.update(self.resource_manager, updated_resources)
 
             for task, allocated_keys in freed_tasks.items():
-                self.__run_task__(task, allocated_keys)
+                self._run_task(task, allocated_keys)
 
             while True:
                 task, allocated_keys = self.task_manager.process_next_task(self.resource_manager)
@@ -89,14 +89,14 @@ class MasterProcess:
                 if not task:
                     break
 
-                self.__run_task__(task, allocated_keys)
+                self._run_task(task, allocated_keys)
 
-            self.__display_state__() # prob: done + active tasks
+            self._display_state() # prob: done + active tasks
 
     def start(self) -> None:
         self.executor = self.executor_type(self.max_workers)
         self.update_event.set()
-        self.__master_process__()
+        self._run_master_process()
         self.executor.shutdown()
 
 if __name__ == "__main__":
