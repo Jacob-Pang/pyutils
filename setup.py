@@ -1,6 +1,9 @@
+import numpy as np
+
+from Cython.Build import cythonize
 from glob import glob
 from setuptools import setup, find_packages
-from os.path import basename, splitext
+from os.path import basename, splitext, join
 
 with open("README.md", 'r') as f:
     long_description = f.read()
@@ -8,7 +11,7 @@ with open("README.md", 'r') as f:
 setup(
     name="pyutils",
     version="1.0",
-    description="Utility modules for python projects",
+    description="General utility modules for python projects",
     long_description=long_description,
     packages=find_packages("src"),
     package_dir={"": "src"},
@@ -17,6 +20,17 @@ setup(
     ],
     include_package_data=True,
     install_requires=[
-        "cloudpickle", "pandas", "PyGithub", "requests", "rpa", "selenium==4.2"
-    ]
+        "cloudpickle",
+        "pandas",
+        "PyGithub",
+        "requests",
+        "rpa",
+        "selenium==4.2"
+    ],
+
+    # cython requirements
+    ext_modules=cythonize([
+        path for path in glob('src/*.pyx')
+    ]),
+    include_dirs=[np.get_include()]
 )
