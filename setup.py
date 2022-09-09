@@ -16,7 +16,8 @@ setup(
     packages=find_packages("src"),
     package_dir={"": "src"},
     py_modules=[
-        splitext(basename(path))[0] for path in glob('src/*.py')
+        *[splitext(basename(path))[0] for path in glob('src/*.py')],
+        *[splitext(basename(path))[0] for path in glob('src/*.pyx')]
     ],
     include_package_data=True,
     install_requires=[
@@ -27,7 +28,6 @@ setup(
         "rpa",
         "selenium==4.2"
     ],
-
     # cython requirements
     ext_modules=cythonize([
         path for path in glob('src/*.pyx')
