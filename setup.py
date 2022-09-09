@@ -16,8 +16,7 @@ setup(
     packages=find_packages("src"),
     package_dir={"": "src"},
     py_modules=[
-        *[splitext(basename(path))[0] for path in glob('src/*.py')],
-        *[splitext(basename(path))[0] for path in glob('src/*.pyx')]
+        *[splitext(basename(path))[0] for path in glob('src/*.py')]
     ],
     include_package_data=True,
     install_requires=[
@@ -30,7 +29,7 @@ setup(
     ],
     # cython requirements
     ext_modules=cythonize([
-        path for path in glob('src/*.pyx')
+        path for path in glob("src/**/*.pyx", recursive=True)
     ]),
     include_dirs=[np.get_include()]
 )
