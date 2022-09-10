@@ -34,9 +34,9 @@ setup(
                     "cyutils", "vector_as_numpy.pyx")])
         ],
         compiler_directives = {"language_level": "3"},
-        include_dirs=[
-            np.get_include(),
-            join("src", "pyutils", "cyutils", "vector_as_numpy.pxd")
-        ]
-    )
+    ),
+    include_dirs=[
+        np.get_include(),
+        join("src", "pyutils", "cyutils", "vector_as_numpy.pxd")
+    ]
 )
