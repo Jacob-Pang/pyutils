@@ -32,7 +32,7 @@ setup(
     include_dirs=[np.get_include()],
     ext_modules=cythonize([
             Extension("cyutils.vector_as_numpy", sources=[join("src", "pyutils",
-                    "cyutils", "vector_as_numpy")])
+                    "cyutils", "vector_as_numpy.pyx")])
         ],
         compiler_directives = {"language_level": "3"}
     )
