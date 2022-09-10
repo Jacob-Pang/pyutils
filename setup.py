@@ -1,9 +1,9 @@
 import numpy as np
 
-from Cython.Build import cythonize
 from glob import glob
+from setuptools import Extension
 from setuptools import setup, find_packages
-from os.path import basename, splitext, join
+from os.path import basename, join, splitext
 
 with open("README.md", 'r') as f:
     long_description = f.read()
@@ -16,20 +16,24 @@ setup(
     packages=find_packages("src"),
     package_dir={"": "src"},
     py_modules=[
-        *[splitext(basename(path))[0] for path in glob('src/*.py')]
+        splitext(basename(path))[0] for path in glob('src/*.py')
     ],
     include_package_data=True,
     install_requires=[
         "cloudpickle",
+        "cython",
         "pandas",
         "PyGithub",
         "requests",
         "rpa",
         "selenium==4.2"
     ],
-    # cython requirements
-    ext_modules=cythonize([
-        path for path in glob("src/**/*.pyx", recursive=True)
-    ]),
-    include_dirs=[np.get_include()]
+    # cython setup
+    include_dirs=[np.get_include()],
+    ext_modules=[
+        Extension("cyutils.vector_as_numpy", sources=[
+            join("src", "pyutils", "cyutils", "vector_as_numpy.pyd"),
+            join("src", "pyutils", "cyutils", "vector_as_numpy.pyx")
+        ])
+    ]
 )
