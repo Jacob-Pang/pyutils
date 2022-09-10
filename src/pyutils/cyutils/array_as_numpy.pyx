@@ -2,8 +2,7 @@
 
 np.import_array()
 
-cdef np.ndarray ndvector_as_numpy(vector[T] _vector, np.npy_intp * shape):
-    cdef void* _array = &_vector[0]
+cdef np.ndarray ndarray_as_numpy(T* _array, np.npy_intp * shape):
     cdef int dtype_num
 
     if T is int:
@@ -15,8 +14,8 @@ cdef np.ndarray ndvector_as_numpy(vector[T] _vector, np.npy_intp * shape):
 
     return np.PyArray_SimpleNewFromData(1, shape, dtype_num, _array)
 
-cdef np.ndarray vector_as_numpy(vector[T] _vector):
+cdef np.ndarray array_as_numpy(T* _array, int size):
     cdef np.npy_intp shape[1]
-    shape[0] = _vector.size()
+    shape[0] = size
 
-    return ndvector_as_numpy(_vector, shape)
+    return ndarray_as_numpy(_array, shape)
