@@ -30,13 +30,12 @@ setup(
         "selenium==4.2"
     ],
     ext_modules=cythonize([
-            Extension("cyutils.vector_as_numpy", sources=[join("src", "pyutils",
+            Extension("pyutils.cyutils.vector_as_numpy", sources=[join("src", "pyutils",
                     "cyutils", "vector_as_numpy.pyx")])
         ],
         compiler_directives = {"language_level": "3"},
     ),
     include_dirs=[
-        np.get_include(),
-        join("src", "pyutils", "cyutils", "vector_as_numpy.pxd")
+        np.get_include()
     ]
 )
