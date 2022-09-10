@@ -5,8 +5,21 @@ from setuptools import Extension
 from setuptools import setup, find_packages
 from os.path import basename, join, splitext
 
-with open("README.md", 'r') as f:
-    long_description = f.read()
+with open("README.md", 'r') as readme:
+    long_description = readme.read()
+
+# Cython modules
+ext_modules = [
+    Extension("cyutils.vector_as_numpy", sources=[
+            join("src", "pyutils", "cyutils", "vector_as_numpy.pyd"),
+            join("src", "pyutils", "cyutils", "vector_as_numpy.pyx")
+        ])
+]
+
+# Set to Python3
+for ext_module in ext_modules:
+    ext_module.cython_directives = {"language_level": "3"}
+
 
 setup(
     name="pyutils",
@@ -28,12 +41,6 @@ setup(
         "rpa",
         "selenium==4.2"
     ],
-    # cython setup
     include_dirs=[np.get_include()],
-    ext_modules=[
-        Extension("cyutils.vector_as_numpy", sources=[
-            join("src", "pyutils", "cyutils", "vector_as_numpy.pyd"),
-            join("src", "pyutils", "cyutils", "vector_as_numpy.pyx")
-        ])
-    ]
+    ext_modules=ext_modules
 )
