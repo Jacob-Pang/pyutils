@@ -1,4 +1,4 @@
-from pyutils.task_scheduler.resource.base import ResourceBase
+from pyutils.task_scheduler_legacy.resource.base import ResourceBase
 
 class ResourceRouter (ResourceBase):
     def __init__(self, key: str = None):

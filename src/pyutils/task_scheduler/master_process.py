@@ -1,101 +1,142 @@
-from multiprocessing import Event
-from multiprocessing.managers import Namespace
-from concurrent.futures import Executor, ProcessPoolExecutor
+from multiprocessing import Event, Semaphore, Value
+from multiprocessing.managers import DictProxy, SyncManager
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
+from task_scheduler.task import Task
+from task_scheduler.resource_manager import ResourceManager, ResourceManagerProxy
+from task_scheduler.task_manager import TaskManager, TaskManagerProxy
 
-from pyutils.io import erase_stdout
-from pyutils.task_scheduler.resource.resource_manager import ResourceManager
-from pyutils.task_scheduler.task.base import TaskBase
-from pyutils.task_scheduler.task.task_manager import TaskManager
+class MasterProcessProxy:
+    def __init__(self, _resource_manager: ResourceManagerProxy, _task_manager: TaskManagerProxy,
+        _task_events: DictProxy, _task_futures: DictProxy, _update_event: Event, _active_tasks: Value,
+        _counter_sem: Semaphore):
 
-class MasterProcess:
-    def __init__(self, resource_manager: ResourceManager, task_manager: TaskManager, update_event: Event,
-        no_remaining_tasks_event: Event, master_state: Namespace, shared_namespace: Namespace,
-        executor_construct: Executor = ProcessPoolExecutor, max_workers: int = 2,
-        verbose: bool = False) -> None:
+        self._resource_manager = _resource_manager
+        self._task_manager = _task_manager
+        self._task_events = _task_events
+        self._task_futures = _task_futures
+        self._update_event = _update_event
+        self._active_tasks = _active_tasks
+        self._counter_sem = _counter_sem
 
-        self._resource_manager = resource_manager
-        self._task_manager = task_manager
-        self._update_event = update_event
-        self._no_remaining_tasks_event = no_remaining_tasks_event
-        self._master_state = master_state
-        self._shared_namespace = shared_namespace
-        self._executor_construct = executor_construct
-        self._max_workers = max_workers
-        self._verbose = verbose
-        self._state_repr_size = 0
+    def register_task(self, task: Task, sync_manager: SyncManager = None) -> None:   
+        if sync_manager and task.key not in self._task_events:
+            self._task_events[task.key] = sync_manager.Event()
+
+        with self._counter_sem:
+            self._active_tasks.value += 1
+
+        self._task_manager.register_task(task)
+        self._update_event.set()
+
+    def post_task_completion(self, task: Task, output: any) -> None:
+        self._task_futures[task.key] = output
+
+        if task.get_remaining_runs() > 0:
+            self._task_manager.post_task_completion(task)
+        elif task.key in self._task_events: # End of task
+            self._task_events[task.key].set()
+
+            with self._counter_sem:
+                self._active_tasks.value -= 1
+
+        self._update_event.set()
+
+    def free_resources(self, resource_usage: dict, allocated_resources: dict) -> None:
+        self._resource_manager.free_resources(resource_usage, allocated_resources)
+        self._update_event.set()
+
+class MasterProcess (MasterProcessProxy):
+    """
+    Phases of tasks:
+        1. new      : not yet processed by the manager
+        2. waiting  : processed and waiting for the task start time to elapse
+        3. ready    : start time elapsed (temporally ready) - oustanding ready tasks
+                at the end of update represent tasks constrained by resources usage
+        4. running  : submitted to executor - may not actually be running
+    """
+    def __init__(self, sync_manager: SyncManager, _resource_manager: ResourceManager) -> None:
+        self._resource_manager = _resource_manager
+        self._task_manager = TaskManager(sync_manager)
+
+        self._ready_tasks = dict() # {task_key: task}
+        self._task_events = sync_manager.dict()
+        self._task_futures = sync_manager.dict()
+        self._update_event = sync_manager.Event()
+        self._heartbeat = sync_manager.Event()
+
+        self._active_tasks = sync_manager.Value(int, 0)
+        self._counter_sem = sync_manager.Semaphore(1)
 
     @property
     def heartbeat(self) -> bool:
-        return self._master_state.heartbeat
+        return not self._heartbeat.is_set()
 
-    @property
-    def description(self) -> str:
-        return self._master_state.description
+    # Accessors
+    def get_time_to_update(self) -> float:
+       return min(self._resource_manager.get_time_to_update(), self._task_manager.get_time_to_update())
 
-    def get_timeout_to_update(self) -> float:
-        resource_timeout = self._resource_manager.get_timeout_to_update()
-        task_timeout = self._task_manager.get_timeout_to_next_task()
+    def get_proxy(self) -> MasterProcessProxy:
+        return MasterProcessProxy(self._resource_manager, self._task_manager, self._task_events,
+                self._task_futures, self._update_event, self._active_tasks, self._counter_sem)
 
-        if not resource_timeout:
-            return task_timeout
-        
-        if not task_timeout:
-            return resource_timeout
+    def get_task_future(self, sync_manager: SyncManager, task_key: str, timeout: int = None) -> any:
+        if task_key not in self._task_events:
+            self._task_events[task_key] = sync_manager.Event()
 
-        return min(resource_timeout, task_timeout)
+        self._task_events[task_key].wait(timeout)
 
-    def _run_task(self, task: TaskBase, allocated_keys: dict) -> None:
-        self._executor.submit(
-            task,
-            allocated_keys=allocated_keys,
-            update_event=self._update_event,
-            resource_manager_proxy=self._resource_manager.as_proxy(),
-            task_manager_proxy=self._task_manager.as_proxy(),
-            shared_namespace=self._shared_namespace
-        )
+        if task_key in self._task_futures:
+            return self._task_futures.get(task_key)
 
-    def _display_state(self) -> None:
-        erase_stdout(self._state_repr_size)
-        state_repr = f"{self.description}\n" + \
-            "==================================================================================\n" + \
-            "RESOURCES                                    Usage\n\n" + \
-            str(self._resource_manager) + \
-            f"\n\nTASKS [{self._task_manager.active_tasks:<4}]                                 State                          Runs\n\n" + \
-            str(self._task_manager)
+        return None
 
-        self._state_repr_size = state_repr.count('\n') + 1
-        print(state_repr)
+    # Mutators
+    def shutdown(self) -> None:
+        self._heartbeat.set()
+        self._update_event.set() # Force awakening
 
-    def _run_master_process(self) -> None:
-        while self.heartbeat:
-            if not self._task_manager.active_tasks:
-                self._no_remaining_tasks_event.set()
+    def update(self, master_process: MasterProcessProxy) -> None:
+        self._task_manager.update()
 
-            self._update_event.wait(timeout=self.get_timeout_to_update())
+        for task in self._task_manager:
+            self._resource_manager.register_request(task.key, task.resource_usage)
+            self._ready_tasks[task.key] = task
+
+        if not self._ready_tasks:
+            return # Update to resources not urgent
+
+        self._resource_manager.update()
+        running_tasks = []
+
+        for task in self._ready_tasks.values():
+            allocated_resources = self._resource_manager.get_allocated_resources(task.key,
+                    task.resource_usage)
+
+            if not allocated_resources is None:
+                self._resource_manager.use_resources(task.key, allocated_resources)
+                running_tasks.append(task.key)
+                self._executor.submit(task, master_process=master_process,
+                        allocated_resources=allocated_resources)
+
+        for task_key in running_tasks:
+            self._ready_tasks.pop(task_key)
+
+    # Process runner
+    def start(self, max_workers: int = 2, use_multiprocessing: bool = True, persist: bool = True) -> None:
+        # Initialize executor
+        if use_multiprocessing:
+            self._executor = ProcessPoolExecutor(max_workers)
+        else:
+            self._executor = ThreadPoolExecutor(max_workers)
+
+        self._heartbeat.clear()
+        master_process = self.get_proxy()
+
+        while self.heartbeat and (persist or self._active_tasks.value > 0):
             self._update_event.clear()
-
-            updated_resources = self._resource_manager.update()
-            freed_tasks = self._task_manager.update(self._resource_manager, updated_resources)
-
-            for task, allocated_keys in freed_tasks.items():
-                self._run_task(task, allocated_keys)
-
-            while True:
-                task, allocated_keys = self._task_manager.process_next_task(self._resource_manager)
-                
-                if not task:
-                    break
-
-                self._run_task(task, allocated_keys)
-
-            if self._verbose:
-                self._display_state() # prob: done + active tasks
-
-    def start(self) -> None:
-        self._executor = self._executor_construct(max_workers=self._max_workers)
-        self._update_event.set()
-
-        self._run_master_process()
+            self.update(master_process)
+            self._update_event.wait(self.get_time_to_update())
+        
         self._executor.shutdown()
 
 if __name__ == "__main__":

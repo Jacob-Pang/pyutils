@@ -1,7 +1,7 @@
 from multiprocessing import Semaphore
 from multiprocessing.managers import ListProxy, SyncManager
 
-from pyutils.task_scheduler.resource.base import ResourceBase
+from pyutils.task_scheduler_legacy.resource.base import ResourceBase
 
 class ResourceManagerProxy:
     def __init__(self, update_end_of_usage_queue: ListProxy) -> None:

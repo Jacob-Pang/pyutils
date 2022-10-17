@@ -4,9 +4,9 @@ from multiprocessing import Semaphore
 from multiprocessing.managers import DictProxy, ListProxy, Namespace, SyncManager
 from typing import Tuple
 
-from pyutils.task_scheduler.resource.resource_manager import ResourceManager
-from pyutils.task_scheduler.task.base import TaskBase
-from pyutils.task_scheduler.task.task_state import TaskState
+from pyutils.task_scheduler_legacy.resource.resource_manager import ResourceManager
+from pyutils.task_scheduler_legacy.task.base import TaskBase
+from pyutils.task_scheduler_legacy.task.task_state import TaskState
 
 class TaskManagerProxy:
     def __init__(self, task_states: DictProxy, task_futures: DictProxy, end_of_task_events: DictProxy,

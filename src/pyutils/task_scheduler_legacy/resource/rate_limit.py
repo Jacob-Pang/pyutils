@@ -1,6 +1,6 @@
 import time
 
-from pyutils.task_scheduler.resource import Resource
+from pyutils.task_scheduler_legacy.resource import Resource
 
 class RateLimit (Resource):
     @staticmethod

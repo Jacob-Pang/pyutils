@@ -2,10 +2,10 @@ from multiprocessing import Event
 from multiprocessing.managers import Namespace
 
 from pyutils.wrapper import WrappedFunction
-from pyutils.task_scheduler.task.base import TaskBase
-from pyutils.task_scheduler.task.task_state import TaskState
-from pyutils.task_scheduler.task.task_manager import TaskManagerProxy
-from pyutils.task_scheduler.resource.resource_manager import ResourceManagerProxy
+from pyutils.task_scheduler_legacy.task.base import TaskBase
+from pyutils.task_scheduler_legacy.task.task_state import TaskState
+from pyutils.task_scheduler_legacy.task.task_manager import TaskManagerProxy
+from pyutils.task_scheduler_legacy.resource.resource_manager import ResourceManagerProxy
 
 class Task (TaskBase, WrappedFunction):
     def __init__(self, target_function: callable, *args: any, name: str = None, start_time: float = None,
