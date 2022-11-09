@@ -1,9 +1,6 @@
-import numpy as np
-
 from glob import glob
-from setuptools import Extension
 from setuptools import setup, find_packages
-from os.path import basename, join, splitext
+from os.path import basename, splitext
 
 with open("README.md", 'r') as readme:
     long_description = readme.read()

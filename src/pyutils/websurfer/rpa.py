@@ -15,6 +15,9 @@ class RPAWebSurfer (WebsurferBase):
     def page_source(self) -> str:
         return rpa.read("page")
     
+    def get_text(self, element_identifier: Identifier) -> str:
+        return rpa.read(element_identifier.as_xpath())
+
     def close(self) -> None:
         rpa.close()
 

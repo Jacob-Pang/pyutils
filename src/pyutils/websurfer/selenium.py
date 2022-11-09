@@ -22,9 +22,9 @@ class SeleniumWebSurfer (WebsurferBase):
 
     def click_element(self, element_identifier: Identifier, **kwargs) -> None:
         if isinstance(element_identifier, XPathIdentifier):
-            self.webdriver.find_element(By.XPATH, element_identifier.__str__(), **kwargs).click()
+            self.webdriver.find_element(By.XPATH, element_identifier.as_xpath(), **kwargs).click()
         elif isinstance(element_identifier, CssSelectorIdentifier):
-            self.webdriver.find_element(By.CSS_SELECTOR, element_identifier.__str__(), **kwargs).click()
+            self.webdriver.find_element(By.CSS_SELECTOR, element_identifier.as_css(), **kwargs).click()
 
 if __name__ == "__main__":
     pass

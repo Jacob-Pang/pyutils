@@ -9,11 +9,19 @@ class Identifier:
     def __str__(self) -> str:
         return self.expression
 
+    def as_xpath(self) -> str:
+        raise NotImplementedError()
+
+    def as_css(self) -> str:
+        raise NotImplementedError()
+
 class XPathIdentifier (Identifier):
-    pass
+    def as_xpath(self) -> str:
+        return self.__str__()
 
 class CssSelectorIdentifier (Identifier):
-    pass
+    def as_css(self) -> str:
+        return self.__str__()
 
 class WebsurferBase:
     @classmethod
