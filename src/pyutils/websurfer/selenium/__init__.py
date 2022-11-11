@@ -1,8 +1,8 @@
 from selenium.webdriver.common.by import By
 from pyutils.websurfer import WebsurferBase
 from pyutils.websurfer import CssSelectorIdentifier, Identifier, XPathIdentifier
-from pyutils.websurfer.selenium_ext import WebdriverBase
-from pyutils.websurfer.selenium_ext.chrome import ChromeWebdriver
+from pyutils.websurfer.selenium.webdriver import WebdriverBase
+from pyutils.websurfer.selenium.chrome import ChromeWebdriver
 
 class SeleniumWebSurfer (WebsurferBase):
     def __init__(self, headless_mode: bool = False, webdriver: WebdriverBase = ChromeWebdriver,
