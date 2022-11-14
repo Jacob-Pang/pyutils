@@ -1,12 +1,15 @@
 from pyutils.websurfer import WebsurferBase, Identifier
-from pyutils.websurfer.rpa.handler import get_rpa_instance
+from pyutils.websurfer.rpa.handler import get_rpa_instance, set_delays
 
 class RPAWebSurfer (WebsurferBase):
     def __init__(self, visual_automation: bool = False, chrome_browser: bool = True,
-        headless_mode: bool = False, turbo_mode: bool = False):
+        headless_mode: bool = False, turbo_mode: bool = False, scan_period: int = 10000,
+        sleeping_delay: bool = True):
 
         WebsurferBase.__init__(self, headless_mode=headless_mode)
         self.rpa = get_rpa_instance()
+        set_delays(self.rpa, scan_period, sleeping_delay)
+
         self.rpa.init(visual_automation=visual_automation, chrome_browser=chrome_browser,
                 headless_mode=headless_mode, turbo_mode=turbo_mode)
 
@@ -21,6 +24,7 @@ class RPAWebSurfer (WebsurferBase):
 
     def close(self) -> None:
         self.rpa.close()
+        set_delays(self.rpa) # Reset
 
     def click_element(self, element_identifier: Identifier, **kwargs) -> None:
         self.rpa.click(element_identifier.__str__())
