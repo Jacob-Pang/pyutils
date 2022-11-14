@@ -3,12 +3,11 @@ from pyutils.websurfer.rpa.handler import get_rpa_instance, set_delays
 
 class RPAWebSurfer (WebsurferBase):
     def __init__(self, visual_automation: bool = False, chrome_browser: bool = True,
-        headless_mode: bool = False, turbo_mode: bool = False, scan_period: int = 10000,
-        sleeping_delay: bool = True):
+        headless_mode: bool = False, turbo_mode: bool = False, **delay_kwargs):
 
         WebsurferBase.__init__(self, headless_mode=headless_mode)
         self.rpa = get_rpa_instance()
-        set_delays(self.rpa, scan_period, sleeping_delay)
+        set_delays(self.rpa, **delay_kwargs)
 
         self.rpa.init(visual_automation=visual_automation, chrome_browser=chrome_browser,
                 headless_mode=headless_mode, turbo_mode=turbo_mode)

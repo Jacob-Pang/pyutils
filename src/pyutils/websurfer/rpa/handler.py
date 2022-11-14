@@ -113,35 +113,49 @@ def destroy_clones() -> None:
     pass
 
 # Optimizations
-def set_delays(rpa_instance: rpa, scan_period: int = 100000, sleeping_delay: bool = True) -> None:
+def set_delays(rpa_instance: rpa, chrome_scan_period: int = 100000, looping_delay: bool = True,
+    sleep_period: int = 500, engine_scan_period: int = .5) -> None:
+    
     # From https://github.com/tebelorg/RPA-Python/issues/120
     tagui_dpath = rpa_instance.tagui_location()
     tagui_chrome_fpath = os.path.join(tagui_dpath, "tagui", "src", "tagui_chrome.php")
     tagui_header_fpath = os.path.join(tagui_dpath, "tagui", "src", "tagui_header.js")
+    tagui_sikuli_fpath = os.path.join(tagui_dpath, "tagui", "src", "tagui.sikuli", "tagui.py")
 
+    # modify tagui_chrome.php
     with open(tagui_chrome_fpath, "r") as file:
         program = file.read()
 
-    program = re.sub("scan_period = \d+;", f"scan_period = {scan_period};", program)
-
+    program = re.sub("scan_period = \d+;", f"scan_period = {chrome_scan_period};", program)
     os.remove(tagui_chrome_fpath)
 
     with open(tagui_chrome_fpath, "w") as file:
         file.write(program)
 
-
+    # modify tagui_header.js
     with open(tagui_header_fpath, "r") as file:
         program = file.read()
 
     program = re.sub("function sleep\(ms\) .*\n",
-        "function sleep(ms) { // helper to add delay during loops\n" if sleeping_delay else
+        "function sleep(ms) { // helper to add delay during loops\n" if looping_delay else
         "function sleep(ms) { return; // helper to add delay during loops\n",
         program
     )
 
+    program = re.sub("sleep\(\d+\)", f"sleep({sleep_period})", program)
     os.remove(tagui_header_fpath)
 
     with open(tagui_header_fpath, "w") as file:
+        file.write(program)
+
+    # modify tagui.sikuli/tagui.py
+    with open(tagui_sikuli_fpath, "r") as file:
+        program = file.read()
+
+    program = re.sub("scan_period = \d+", f"scan_period = {engine_scan_period}", program)
+    os.remove(tagui_sikuli_fpath)
+
+    with open(tagui_sikuli_fpath, "w") as file:
         file.write(program)
 
 if __name__ == "__main__":
