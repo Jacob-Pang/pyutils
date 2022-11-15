@@ -16,7 +16,15 @@ class RPAWebSurfer (WebsurferBase):
         self.rpa.url(url)
     
     def page_source(self) -> str:
-        return self.rpa.read("page")
+        # Bug found where reading returns empty
+        for _ in range(20):
+            source = self.rpa.read("page")
+            if source: break
+
+        if not source:
+            raise Exception("Could not retrieve the HTML from webpage.")
+
+        return source
     
     def get_text(self, element_identifier: Identifier) -> str:
         return self.rpa.read(element_identifier.as_xpath())
