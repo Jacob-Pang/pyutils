@@ -1,0 +1,186 @@
+import numpy as np
+
+cdef class [Name]ArrayIterator:
+    def __init__(self, [Type][::1] array, int size, int start_index, int end_index):
+        self.array = array
+        self.size = size
+        self.start_index = start_index
+        self.end_index = end_index
+        self.stop_iteration = False
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        if self.stop_iteration:
+            raise StopIteration()
+
+        if self.start_index == self.end_index:
+            self.stop_iteration = True
+
+        cdef [Type] value = self.array[self.start_index]
+        self.start_index = (self.start_index + 1) % self.size
+
+        return value
+
+cdef class [Name]ArrayQueue:
+    def __init__(self, array_capacity: int):
+        self.array = np.zeros(shape=(array_capacity,), dtype=[PyType])
+        self.array_capacity = array_capacity
+        self.head = 0
+        self.size = 0
+
+    # Getters
+    cdef int get_true_index(self, int index):
+        if self.size > 0:
+            index %= self.size
+        
+        return (self.head + index) % self.array_capacity
+
+    cdef int tail(self):
+        return (self.head + self.size) % self.array_capacity
+
+    cpdef int get_size(self):
+        return self.size
+
+    cpdef int get_capacity(self):
+        return self.array_capacity
+
+    cpdef [Type] get(self, int index):
+        return self.array[self.get_true_index(index)]
+
+    cpdef [Name]ArrayIterator get_iterator(self, int start_index = 0, int stop_index = 0):
+        if self.size > 0:
+            stop_index %= self.size
+        
+        return [Name]ArrayIterator(self.array, self.size, self.get_true_index(start_index),
+                self.get_true_index(stop_index - 1))
+
+    # Mutators
+    cpdef void set(self, int index, [Type] value):
+        self.array[self.get_true_index(index)] = value
+        
+    cpdef void clear(self):
+        self.size = 0
+
+    cpdef void push_front(self, [Type] value):
+        self.head = (self.head - 1) % self.array_capacity
+        self.array[self.head] = value
+        self.size = min(self.size + 1, self.array_capacity)
+
+    cpdef void push_back(self, [Type] value):
+        self.array[self.tail()] = value
+        self.size += 1
+
+        if self.size > self.array_capacity:
+            self.head = (self.head + 1) % self.array_capacity
+            self.size = self.array_capacity
+
+    cpdef [Type] pop_front(self):
+        assert self.size > 0
+        cdef [Type] value = self.array[self.head]
+        self.head = (self.head + 1) % self.array_capacity
+        self.size -= 1
+
+        return value
+
+    cpdef [Type] pop_back(self):
+        assert self.size > 0
+        cdef [Type] value = self.array[self.get_true_index(self.size - 1)]
+        self.size -= 1
+
+        return value
+    
+    cpdef np.ndarray[[Type], ndim=1] get_data(self, int start_index = 0, int stop_index = 0):
+        return np.fromiter(self.get_iterator(start_index, stop_index), dtype=[PyType])
+
+
+    def __reduce__(self):
+        attrs = {
+            "array": np.asarray(self.array),
+            "head":  self.head,
+            "size":  self.size
+        }
+
+        return (self.__class__, (self.array_capacity,), attrs)
+
+    def __setstate__(self, attrs: dict):
+        self.array = attrs.get("array")
+        self.head = attrs.get("head")
+        self.size = attrs.get("size")
+
+cdef class Contiguous[Name]ArrayQueue ([Name]ArrayQueue):
+    def __init__(self, array_capacity: int, container_capacity: int = None):
+        if not container_capacity:
+            container_capacity = 2 * array_capacity
+        
+        super().__init__(container_capacity)
+        self.container_capacity = container_capacity
+        self.array_capacity = array_capacity # overwrite
+
+    # Getters
+    cdef int get_true_index(self, int index):
+        if self.size > 0:
+            index %= self.size
+        
+        return self.head + index
+
+    cdef int tail(self):
+        return self.head + self.size
+
+    # Mutators
+    cpdef void clear(self):
+        self.head = 0
+        self.size = 0
+
+    cpdef void push_front(self, [Type] value):
+        cdef int tail = self.tail()
+        self.size = min(self.size + 1, self.array_capacity)
+
+        if self.head == 0:
+            # Copy move elements
+            self.array[1:self.size] = self.array[:(self.size - 1)]
+        else:
+            self.head -= 1
+        
+        self.array[self.head] = value
+
+    cpdef void push_back(self, [Type] value):
+        cdef int tail = self.tail()
+        self.size += 1
+        
+        if tail == self.container_capacity:
+            # Copy move elements
+            self.size = min(self.size, self.array_capacity)
+            self.array[:(self.size - 1)] = self.array[(tail - self.size + 1):tail]
+            self.head = 0
+            self.array[self.size - 1] = value
+            return
+
+        if self.size > self.array_capacity:
+            self.head += 1
+            self.size = self.array_capacity
+
+        self.array[tail] = value
+
+    cpdef [Type] pop_front(self):
+        cdef [Type] value = self.array[self.head]
+        self.head += 1
+        self.size -= 1
+
+        if self.size == 0:
+            self.head = 0
+        
+        return value
+
+    cpdef np.ndarray[[Type], ndim=1] get_data(self, int start_index = 0, int stop_index = 0):
+        return np.asarray(self.array[self.head:self.tail()])
+
+    def __reduce__(self):
+        attrs = {
+            "array": np.asarray(self.array),
+            "head":  self.head,
+            "size":  self.size
+        }
+
+        return (self.__class__, (self.array_capacity, self.container_capacity), attrs)

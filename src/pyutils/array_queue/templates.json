@@ -1,0 +1,14 @@
+{
+    "array_queue" : {
+        "int_array_queue" : {
+            "[Name]":   "Int",
+            "[Type]":   "int",
+            "[PyType]": "int"
+        },
+        "float_array_queue": {
+            "[Name]":   "Float",
+            "[Type]":   "double",
+            "[PyType]": "float"
+        }
+    }
+}

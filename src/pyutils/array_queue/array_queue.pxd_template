@@ -1,0 +1,34 @@
+cimport numpy as np
+
+cdef class [Name]ArrayIterator:
+    cdef [Type][::1] array
+    cdef int size
+    cdef int start_index
+    cdef int end_index
+    cdef bint stop_iteration
+
+cdef class [Name]ArrayQueue:
+    cdef [Type][::1] array
+    cdef int head
+    cdef int size
+    cdef int array_capacity
+
+    # Getters
+    cdef int get_true_index(self, int index)
+    cdef int tail(self)
+    cpdef int get_size(self)
+    cpdef int get_capacity(self)
+    cpdef [Type] get(self, int index)
+    cpdef [Name]ArrayIterator get_iterator(self, int start_index = *, int stop_index = *)
+
+    # Mutators
+    cpdef void set(self, int index, [Type] value)
+    cpdef void clear(self)
+    cpdef void push_front(self, [Type] value)
+    cpdef void push_back(self, [Type] value)
+    cpdef [Type] pop_front(self)
+    cpdef [Type] pop_back(self)
+    cpdef np.ndarray[[Type], ndim=1] get_data(self, int start_index = *, int stop_index = *)
+
+cdef class Contiguous[Name]ArrayQueue ([Name]ArrayQueue):
+    cdef int container_capacity
