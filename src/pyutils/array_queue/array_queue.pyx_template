@@ -92,6 +92,9 @@ cdef class [Name]ArrayQueue:
         return value
     
     cpdef np.ndarray[[Type], ndim=1] get_data(self, int start_index = 0, int stop_index = 0):
+        if not self.size:
+            return np.array(shape=(0,), dtype=[PyType]))
+
         return np.fromiter(self.get_iterator(start_index, stop_index), dtype=[PyType])
 
 
@@ -127,6 +130,9 @@ cdef class Contiguous[Name]ArrayQueue ([Name]ArrayQueue):
 
     cdef int tail(self):
         return self.head + self.size
+
+    cpdef int get_container_capacity(self):
+        return self.container_capacity
 
     # Mutators
     cpdef void clear(self):

@@ -32,3 +32,5 @@ cdef class [Name]ArrayQueue:
 
 cdef class Contiguous[Name]ArrayQueue ([Name]ArrayQueue):
     cdef int container_capacity
+
+    cpdef int get_container_capacity(self)
