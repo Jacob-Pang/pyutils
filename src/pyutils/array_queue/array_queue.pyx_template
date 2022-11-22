@@ -93,7 +93,7 @@ cdef class [Name]ArrayQueue:
     
     cpdef np.ndarray[[Type], ndim=1] get_data(self, int start_index = 0, int stop_index = 0):
         if not self.size:
-            return np.array(shape=(0,), dtype=[PyType]))
+            return np.array(shape=(0,), dtype=[PyType])
 
         return np.fromiter(self.get_iterator(start_index, stop_index), dtype=[PyType])
 
