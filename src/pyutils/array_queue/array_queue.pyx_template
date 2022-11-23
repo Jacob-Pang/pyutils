@@ -180,7 +180,17 @@ cdef class Contiguous[Name]ArrayQueue ([Name]ArrayQueue):
         return value
 
     cpdef np.ndarray[[Type], ndim=1] get_data(self, int start_index = 0, int stop_index = 0):
-        return np.asarray(self.array[self.head:self.tail()])
+        if not self.size:
+            return np.array(shape=(0,), dtype=[PyType])
+
+        start_index %= self.size
+
+        if stop_index == 0:
+            stop_index = self.size
+        else:
+            stop_index %= self.size
+
+        return np.asarray(self.array[self.head + start_index:self.head + stop_index])
 
     def __reduce__(self):
         attrs = {
