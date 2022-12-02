@@ -3,14 +3,17 @@ from pyutils.websurfer.rpa.handler import get_rpa_instance, set_delays
 
 class RPAWebSurfer (WebsurferBase):
     def __init__(self, visual_automation: bool = False, chrome_browser: bool = True,
-        headless_mode: bool = False, turbo_mode: bool = False, **delay_kwargs):
+        headless_mode: bool = False, turbo_mode: bool = False, **delay_config):
 
         WebsurferBase.__init__(self, headless_mode=headless_mode)
         self.rpa = get_rpa_instance()
-        set_delays(self.rpa, **delay_kwargs)
-
+        set_delays(self.rpa, **delay_config)
         self.rpa.init(visual_automation=visual_automation, chrome_browser=chrome_browser,
                 headless_mode=headless_mode, turbo_mode=turbo_mode)
+
+        self.visual_automation = visual_automation
+        self.chrome_browser = chrome_browser
+        self.turbo_mode = turbo_mode
 
     def get(self, url: str) -> None:
         self.rpa.url(url)
@@ -28,6 +31,11 @@ class RPAWebSurfer (WebsurferBase):
     
     def get_text(self, element_identifier: Identifier) -> str:
         return self.rpa.read(element_identifier.as_xpath())
+
+    def restart(self) -> None:
+        self.rpa.close()
+        self.rpa.init(visual_automation=self.visual_automation, chrome_browser=self.chrome_browser,
+                headless_mode=self.headless, turbo_mode=self.turbo_mode)
 
     def close(self) -> None:
         self.rpa.close()

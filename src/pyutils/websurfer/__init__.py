@@ -37,6 +37,9 @@ class WebsurferBase:
     def page_source(self) -> str:
         raise NotImplementedError()
 
+    def restart(self) -> None:
+        raise NotImplementedError()
+
     def close(self) -> None:
         raise NotImplementedError()
 
