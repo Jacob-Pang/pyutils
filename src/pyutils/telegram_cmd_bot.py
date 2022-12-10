@@ -1,6 +1,8 @@
+import os
 import json
 import requests
 
+from collections import defaultdict
 from subprocess import Popen, PIPE
 from telethon import TelegramClient, events
 from threading import Thread
@@ -9,26 +11,12 @@ def send_telegram_message(bot_token: str, chat_id: str, message: str) -> None:
     for _ in range(99):
         try:
             return requests.post(f"https://api.telegram.org/bot{bot_token}/sendMessage",
-                    json={"chat_id": chat_id, "text": message})
+                    json={"chat_id": chat_id, "text": message, "parse_mode": "html"})
         except:
             pass
     
     requests.post(f"https://api.telegram.org/bot{bot_token}/sendMessage",
-            json={"chat_id": chat_id, "text": message})
-
-def manage_process_output(command_bot: "CommandBotBase", process_pid: int) -> None:
-    process, chat_id = command_bot.active_processes[process_pid]
-
-    for output in process.stdout:
-        send_telegram_message(command_bot.bot_token, chat_id, f"Process [{process_pid}]:\n"
-                + output.decode("utf-8"))
-
-    for output in process.stderr:
-        send_telegram_message(command_bot.bot_token, chat_id, f"Process [{process_pid}] encountered exception:\n"
-                + output.decode("utf-8"))
-    
-    process.wait()
-    command_bot._stop(process_pid)
+            json={"chat_id": chat_id, "text": message, "parse_mode": "html"})
 
 def make_bot_from_config(config_json: str) -> "CommandBotBase":
     with open(config_json) as json_file:
@@ -49,19 +37,110 @@ def run_command_bot(command_bot: "CommandBotBase") -> None:
 
 
 class CommandBotBase:
+    class ProcessArgsParser:
+        def __init__(self) -> None:
+            self.args = []
+            self.encapsulator = None
+            self.set_alias = False
+            self.process_alias = None
+            self.set_cwd = False
+            self.cwd = os.getcwd()
+        
+        def parse_arg(self, arg: str) -> None:
+            if arg == "-alias":
+                self.set_alias = True
+            elif self.set_alias:
+                self.process_alias = arg.strip()
+                self.set_alias = False
+            elif arg == "-cwd":
+                self.set_cwd = True
+            elif self.set_cwd:
+                self.cwd = arg.strip()
+                self.set_cwd = False
+            else:
+                self.args.append(arg)
+
+        def parse_args(self, args_text: str) -> None:
+            arg = ""
+
+            for char in args_text:
+                if not self.encapsulator and (char == "'" or char == '"'):
+                    self.encapsulator = char
+                elif char == self.encapsulator:
+                    self.encapsulator = None
+                elif char != ' ' or self.encapsulator:
+                    arg += char
+                elif arg: # Argument found
+                    self.parse_arg(arg)
+                    arg = "" # Reset
+            
+            if arg:
+                self.parse_arg(arg)
+
     def __init__(self, client: TelegramClient, bot_token: str, name: str = "CommandBot"):
         self.client = client
         self.bot_token = bot_token
         self.name = name
 
-        # Runtime vars
-        self.sender_id = None
-        self.chat_id = None
-        self.active_processes = dict[int, Popen]()
+        # Current command vars
+        self.cmd_sender_id = None
+        self.cmd_chat_id = None
 
+        # Tracks mapping of process_alias to (process, output_chat_id)
+        self.processes = dict[str, tuple[Popen, int]]()
+
+        # Tracks mapping of sender_id to process_alias of active (tracked) processes
+        self.active_processes = defaultdict(list[str])
+
+    # Initializer
     def start(self):
         self.client.start(bot_token=self.bot_token)
 
+    # Process handlers
+    def pipe_process_outputs(self, process_alias: str):
+        process, output_chat_id = self.processes[process_alias]
+
+        for output in process.stdout:
+            send_telegram_message(
+                self.bot_token, output_chat_id,
+                f"<b>Process [{process_alias}]</b>:\n{output.decode('utf-8')}"
+            )
+
+        process.wait()
+        self.kill_process(process_alias) # Does not invoke Popen.terminate
+    
+    def pipe_process_errors(self, process_alias: str):
+        process, output_chat_id = self.processes[process_alias]
+
+        for output in process.stderr:
+            send_telegram_message(
+                self.bot_token, output_chat_id,
+                f"<b>Process [{process_alias}] Error</b>:\n{output.decode('utf-8')}"
+            )
+
+    def kill_process(self, process_alias: str):
+        if process_alias not in self.processes:
+            return
+
+        process, output_chat_id = self.processes[process_alias]
+        status = process.poll()
+
+        if status is None: # Busy process
+            process.terminate()
+
+        self.processes.pop(process_alias)
+
+        # Remove process_alias from tracked active processes
+        for user in self.active_processes.keys():
+            if process_alias in self.active_processes[user]:
+                self.active_processes[user].remove(process_alias)
+
+        send_telegram_message(
+            self.bot_token, output_chat_id,
+            f"<b>Process [{process_alias}]</b> closed."
+        )
+
+    # Event handlers
     async def event_handler(self, event):
         _, command = str(event.raw_text).split('/', maxsplit=1)
         command = command.strip()
@@ -69,8 +148,8 @@ class CommandBotBase:
 
         sender = await event.get_sender()
         chat = await event.get_chat()
-        self.sender_id = sender.id
-        self.chat_id = chat.id
+        self.cmd_sender_id = sender.id
+        self.cmd_chat_id = chat.id
         
         if ' ' in command:
             # command has args
@@ -82,96 +161,78 @@ class CommandBotBase:
 
         try: # Execute command wrapper
             if not hasattr(self, command_name):
-                await self.echo(f"Command [{command_name}] not recognized.")
+                await self.echo(f"<b>Error:</b> command [{command_name}] not recognized.")
             elif command_args:
                 await getattr(self, command_name)(command_args)
             else:
                 await getattr(self, command_name)()
         except Exception as exception:
-            await self.echo(f"Exception encountered:\n{exception}")
+            await self.echo(f"<b>Exception encountered:</b>\n{exception}")
 
     async def disconnect(self):
-        await self.echo(f"{self.name} Disconnected.")
+        await self.echo(f"{self.name} disconnected.")
         await self.client.disconnect()
 
     async def echo(self, message: str) -> None:
-        await self.client.send_message(self.sender_id, message, parse_mode="HTML")
+        await self.client.send_message(self.cmd_sender_id, message, parse_mode="HTML")
 
-    # Process methods
-    def _stop(self, process_pid: int = None) -> None:
-        if not process_pid:
-            try:    process_pid = list(self.active_processes.keys())[-1]
-            except: return
+    async def cmd(self, process_alias: str = None) -> None:
+        if process_alias:
+            await self.execute(f"cmd.exe -alias {process_alias}")
+        else:
+            await self.execute("cmd.exe")
+
+    async def execute(self, args_text: str) -> None:
+        args_parser = CommandBotBase.ProcessArgsParser()
+        args_parser.parse_args(args_text)
         
-        process_pid = int(process_pid)
+        if args_parser.args[0] == "py": # Python executable
+            args_parser.args.insert(1, "-u") # Automatically flush output prints
 
-        if process_pid not in self.active_processes:
+        process = Popen(args_parser.args, stdin=PIPE, stdout=PIPE, stderr=PIPE, cwd=args_parser.cwd)
+        process_alias = args_parser.process_alias if args_parser.process_alias else str(process.pid)
+
+        self.processes[process_alias] = (process, self.cmd_chat_id)
+
+        await self.echo(f"<b>Process [{process_alias}]</b> started and active.")
+
+        Thread(target=self.pipe_process_outputs, args=(process_alias,)).start()
+        Thread(target=self.pipe_process_errors, args=(process_alias,)).start()
+
+        self.active_processes[self.cmd_sender_id].append(process_alias)
+
+    async def close(self, process_alias: str = None) -> None:
+        active_process_alias = self.active_processes[self.cmd_chat_id][-1] \
+            if self.active_processes[self.cmd_chat_id] else None
+
+        if not process_alias: # Assign to active process
+            process_alias = active_process_alias
+        
+        if not process_alias:
+            await self.echo(f"<b>Error:</b> No active process found.")
+            return
+
+        self.kill_process(process_alias)
+
+    async def activate(self, process_alias: str) -> None:
+        # Activates the process (sets to current active process)
+        if process_alias not in self.processes:
+            await self.echo(f"<b>Error:</b> process alias [{process_alias}] not recognized.")
             return
         
-        process, chat_id = self.active_processes[process_pid]
-        exit_code = process.poll()
+        if process_alias in self.active_processes[self.cmd_sender_id]:
+            self.active_processes[self.cmd_sender_id].remove(process_alias)
 
-        if exit_code is None:
-            process.terminate()
-            send_telegram_message(self.bot_token, chat_id, f"Process [{process_pid}] terminated.")
+        self.active_processes[self.cmd_sender_id].append(process_alias)
+
+    async def input(self, pipe_input: str) -> None:
+        # Pipes the input to the active process
+        if not self.active_processes[self.cmd_sender_id]:
+            await self.echo(f"<b>Error:</b> No active process found.")
         else:
-            send_telegram_message(self.bot_token, chat_id, f"Process [{process_pid}] exited with status {exit_code}.")
-
-        self.active_processes.pop(process_pid)
-
-    async def run(self, command_args: str) -> None:
-        args, command_arg, encapsulator = [], "", None
-        
-        for char in command_args:
-            if not encapsulator and (char == "'" or char == '"'):
-                encapsulator = char
-            elif char == encapsulator:
-                encapsulator = None
-            elif char != ' ' or encapsulator:
-                command_arg += char
-            elif command_arg:
-                args.append(command_arg)
-                command_arg = "" # Reset
-        
-        if command_arg:
-            args.append(command_arg)
-        
-        if args[0] == "py": # Python executable
-            args.insert(1, "-u") # Flush prints
-
-        process = Popen(args, stdin=PIPE, stdout=PIPE, stderr=PIPE)
-        self.active_processes[process.pid] = (process, self.chat_id)
-
-        await self.echo(f"Running on subprocess [{process.pid}].")
-        Thread(target=manage_process_output, args=(self, process.pid)).start()
-
-    async def stop(self, process_pid: str = None) -> None:
-        if not process_pid:
-            try:    process_pid = list(self.active_processes.keys())[-1]
-            except: return
-
-        self._stop(int(process_pid))
-
-    async def input(self, command_args: str) -> None:
-        # command_args format
-        #   relay_input subproc_pid (opt)
-        if ' ' in command_args:
-            relay_input, process_pid = command_args.split(' ', maxsplit=1)
-
-            relay_input = relay_input.strip()
-            process_pid = int(process_pid.strip())
-        else:
-            relay_input = command_args.strip()
-
-            try:    process_pid = list(self.active_processes.keys())[-1]
-            except: process_pid = None # Triggers error message
-
-        if process_pid not in self.active_processes:
-            await self.echo(f"No active subprocess [{process_pid}] found.")
-        else:
-            await self.echo(f"Relaying {relay_input} to subprocess [{process_pid}].")
-            process, _ = self.active_processes[process_pid]
-            process.stdin.write(f"{relay_input}\n".encode("utf-8"))
+            process_alias = self.active_processes[self.cmd_sender_id][-1]
+            process, _ = self.processes[process_alias]
+            process.stdin.write(f"{pipe_input}\r\n".encode("utf-8"))
             process.stdin.flush()
 
 if __name__ == "__main__":
