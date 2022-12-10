@@ -237,5 +237,4 @@ class CommandBotBase:
             process.stdin.flush()
 
 if __name__ == "__main__":
-    bot = make_bot_from_config("telegram_config.json")
-    run_command_bot(bot)
+    pass
