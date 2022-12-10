@@ -38,27 +38,33 @@ def run_command_bot(command_bot: "CommandBotBase") -> None:
 
 class CommandBotBase:
     class ProcessArgsParser:
+        set_alias_flag = "-alias"
+        set_cwd_flag = "-cwd"
+
         def __init__(self) -> None:
             self.args = []
             self.encapsulator = None
-            self.set_alias = False
-            self.process_alias = None
-            self.set_cwd = False
+            self.setter_flag = None
+
             self.cwd = os.getcwd()
+            self.process_alias = None
         
         def parse_arg(self, arg: str) -> None:
-            if arg == "-alias":
-                self.set_alias = True
-            elif self.set_alias:
-                self.process_alias = arg.strip()
-                self.set_alias = False
-            elif arg == "-cwd":
-                self.set_cwd = True
-            elif self.set_cwd:
-                self.cwd = arg.strip()
-                self.set_cwd = False
+            if arg in [self.set_alias_flag, self.set_cwd_flag]:
+                assert not self.setter_flag # No active setter_flag
+                self.setter_flag = arg
+            elif self.setter_flag:
+                if self.setter_flag == self.set_alias_flag:
+                    self.process_alias = arg.strip()
+                elif self.setter_flag == self.set_cwd_flag:
+                    self.cwd = arg.strip()
+                
+                self.setter_flag = None
             else:
                 self.args.append(arg)
+
+                if arg == "py":
+                    self.args.append("-u")
 
         def parse_args(self, args_text: str) -> None:
             arg = ""
@@ -101,10 +107,9 @@ class CommandBotBase:
         process, output_chat_id = self.processes[process_alias]
 
         for output in process.stdout:
-            send_telegram_message(
-                self.bot_token, output_chat_id,
-                f"<b>Process [{process_alias}]</b>:\n{output.decode('utf-8')}"
-            )
+            try:    message = f"<b>Process [{process_alias}]</b>:\n{output.decode('utf-8')}"
+            except: message = f"<b>Process [{process_alias}]</b>:\n(undecoded) {output}"
+            send_telegram_message(self.bot_token, output_chat_id, message)
 
         process.wait()
         self.kill_process(process_alias) # Does not invoke Popen.terminate
@@ -113,10 +118,10 @@ class CommandBotBase:
         process, output_chat_id = self.processes[process_alias]
 
         for output in process.stderr:
-            send_telegram_message(
-                self.bot_token, output_chat_id,
-                f"<b>Process [{process_alias}] Error</b>:\n{output.decode('utf-8')}"
-            )
+            try:    message = f"<b>Process [{process_alias}] Error</b>:\n{output.decode('utf-8')}"
+            except: message = f"<b>Process [{process_alias}] Error</b>:\n(undecoded) {output}"
+
+            send_telegram_message(self.bot_token, output_chat_id, message)
 
     def kill_process(self, process_alias: str):
         if process_alias not in self.processes:
@@ -176,22 +181,18 @@ class CommandBotBase:
     async def echo(self, message: str) -> None:
         await self.client.send_message(self.cmd_sender_id, message, parse_mode="HTML")
 
-    async def cmd(self, process_alias: str = None) -> None:
-        if process_alias:
-            await self.execute(f"cmd.exe -alias {process_alias}")
+    async def cmd(self, args_text: str = None) -> None:
+        if args_text:
+            await self.execute(f"cmd.exe {args_text}")
         else:
             await self.execute("cmd.exe")
 
     async def execute(self, args_text: str) -> None:
         args_parser = CommandBotBase.ProcessArgsParser()
         args_parser.parse_args(args_text)
-        
-        if args_parser.args[0] == "py": # Python executable
-            args_parser.args.insert(1, "-u") # Automatically flush output prints
 
         process = Popen(args_parser.args, stdin=PIPE, stdout=PIPE, stderr=PIPE, cwd=args_parser.cwd)
         process_alias = args_parser.process_alias if args_parser.process_alias else str(process.pid)
-
         self.processes[process_alias] = (process, self.cmd_chat_id)
 
         await self.echo(f"<b>Process [{process_alias}]</b> started and active.")
@@ -236,4 +237,5 @@ class CommandBotBase:
             process.stdin.flush()
 
 if __name__ == "__main__":
-    pass
+    bot = make_bot_from_config("telegram_config.json")
+    run_command_bot(bot)
