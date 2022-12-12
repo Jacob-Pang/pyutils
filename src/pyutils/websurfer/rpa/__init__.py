@@ -28,7 +28,10 @@ class RPAWebSurfer (WebsurferBase):
             raise Exception("Could not retrieve the HTML from webpage.")
 
         return source
-    
+
+    def exists(self, element_identifier: Identifier, **kwargs) -> str:
+        return self.rpa.exist(element_identifier.as_xpath())
+
     def get_text(self, element_identifier: Identifier) -> str:
         return self.rpa.read(element_identifier.as_xpath())
 

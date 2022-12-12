@@ -49,6 +49,10 @@ class WebsurferBase:
     def wait(self, seconds: int) -> None:
         time.sleep(seconds)
 
+    def exists(self, element_identifier: Identifier, **kwargs) -> str:
+        # Returns whether the element exists
+        raise NotImplementedError()
+
     def get_text(self, element_identifier: Identifier, **kwargs) -> str:
         # Returns the text for the first match
         raise NotImplementedError()
