@@ -1,3 +1,4 @@
+import asyncio
 import time
 
 from lxml import etree
@@ -46,9 +47,6 @@ class WebsurferBase:
     def close(self) -> None:
         raise NotImplementedError()
 
-    def wait(self, seconds: int) -> None:
-        time.sleep(seconds)
-
     def exists(self, element_identifier: Identifier, **kwargs) -> str:
         # Returns whether the element exists
         raise NotImplementedError()
@@ -73,6 +71,20 @@ class WebsurferBase:
 
     def __exit__(self, *args) -> None:
         return self.close()
+
+async def wait(predicate: callable, timeout: float = None, revaluate_delay: float = .5) -> bool:
+    start_time = time.time()
+    predicate_value = False
+
+    while not timeout or time.time() < start_time + timeout:
+        predicate_value = predicate()
+
+        if predicate_value:
+            break
+
+        asyncio.sleep(revaluate_delay)
+    
+    return predicate_value
 
 if __name__ == "__main__":
     pass
