@@ -1,6 +1,3 @@
-import asyncio
-import time
-
 from lxml import etree
 from pyutils.wrapper import WrappedFunction
 
@@ -71,20 +68,6 @@ class WebsurferBase:
 
     def __exit__(self, *args) -> None:
         return self.close()
-
-async def wait(predicate: callable, timeout: float = None, revaluate_delay: float = .5) -> bool:
-    start_time = time.time()
-    predicate_value = False
-
-    while not timeout or time.time() < start_time + timeout:
-        predicate_value = predicate()
-
-        if predicate_value:
-            break
-
-        asyncio.sleep(revaluate_delay)
-    
-    return predicate_value
 
 if __name__ == "__main__":
     pass
