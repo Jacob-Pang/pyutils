@@ -84,6 +84,10 @@ def set_delays(rpa_instance: rpa, chrome_scan_period: int = 100000, looping_dela
     tagui_header_fpath = os.path.join(tagui_dpath, "tagui", "src", "tagui_header.js")
     tagui_sikuli_fpath = os.path.join(tagui_dpath, "tagui", "src", "tagui.sikuli", "tagui.py")
 
+    if not os.path.exists(tagui_dpath):
+        # Binaries and files not downloaded
+        rpa_instance.setup()
+
     # modify tagui_chrome.php
     with open(tagui_chrome_fpath, "r") as file:
         program = file.read()
