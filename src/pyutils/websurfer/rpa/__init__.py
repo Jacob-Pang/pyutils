@@ -19,7 +19,7 @@ class RPAWebSurfer (WebsurferBase):
         self.rpa.url(url)
     
     def page_source(self) -> str:
-        # Bug found where reading returns empty
+        # Reading may return empty
         for _ in range(20):
             source = self.rpa.read("page")
             if source: break

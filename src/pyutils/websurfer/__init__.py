@@ -1,4 +1,6 @@
 import time
+
+from lxml import etree
 from pyutils.wrapper import WrappedFunction
 
 # Element Identifiers
@@ -35,6 +37,7 @@ class WebsurferBase:
         raise NotImplementedError()
 
     def page_source(self) -> str:
+        # Returns the page HTML
         raise NotImplementedError()
 
     def restart(self) -> None:
@@ -46,11 +49,19 @@ class WebsurferBase:
     def wait(self, seconds: int) -> None:
         time.sleep(seconds)
 
+    def get_text(self, element_identifier: Identifier, **kwargs) -> str:
+        # Returns the text for the first match
+        raise NotImplementedError()
+
+    def find_elements(self, element_identifier: Identifier, **kwargs) -> list:
+        # Returns matching elements
+        return etree.HTML(self.page_source()).xpath(element_identifier.as_xpath())
+
     def click_element(self, element_identifier: Identifier, **kwargs) -> None:
         raise NotImplementedError()
 
-    def input_text(self, element_identifier: Identifier, text: str,
-        send_enter_key: bool = False, **kwargs) -> None:
+    def input_text(self, element_identifier: Identifier, text: str, send_enter_key:
+        bool = False, **kwargs) -> None:
         raise NotImplementedError()
 
     def __enter__(self):
