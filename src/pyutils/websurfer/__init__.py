@@ -1,5 +1,4 @@
 from lxml import etree
-from pyutils.wrapper import WrappedFunction
 
 # Element Identifiers
 class Identifier:
@@ -14,22 +13,24 @@ class Identifier:
 
     def as_css(self) -> str:
         raise NotImplementedError()
+    
+    def get_child(self, expression_extension: str) -> "Identifier":
+        raise NotImplementedError()
 
 class XPathIdentifier (Identifier):
     def as_xpath(self) -> str:
         return self.__str__()
+
+    def get_child(self, extension: str) -> "Identifier":
+        return XPathIdentifier(f"{self.expression}/{extension}")
 
 class CssSelectorIdentifier (Identifier):
     def as_css(self) -> str:
         return self.__str__()
 
 class WebsurferBase:
-    @classmethod
-    def initializer(cls: type, **kwargs) -> callable:
-        return WrappedFunction(cls, **kwargs)
-
     def __init__(self, headless_mode: bool = False) -> None:
-        self.headless = headless_mode
+        self.headless_mode = headless_mode
 
     def get(self, url: str) -> None:
         raise NotImplementedError()

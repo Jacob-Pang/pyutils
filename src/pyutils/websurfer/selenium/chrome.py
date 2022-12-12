@@ -4,7 +4,7 @@ import wget
 import zipfile
 
 from selenium import webdriver
-from pyutils.websurfer.selenium.webdriver import WebdriverBase
+from .webdriver import WebdriverBase
 
 class ChromeWebdriver(WebdriverBase):
     @staticmethod
