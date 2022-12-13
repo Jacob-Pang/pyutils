@@ -2,11 +2,15 @@ import os
 import platform
 import re
 import rpa
+import sys
 
-from importlib import import_module
+from types import ModuleType
+from importlib.util import spec_from_file_location, module_from_spec
 from multiprocessing import Semaphore
 from multiprocessing.managers import SyncManager
-from types import ModuleType
+
+cloned_module_directory = os.path.dirname(rpa.__file__)
+cloned_source_directory = None
 
 def get_remote_debugging_port(rpa_instance_id: int) -> str:
     return str(9222 - rpa_instance_id)
@@ -18,9 +22,9 @@ def tagui_dirname() -> str:
     return ".tagui"
 
 def get_rpa_clone(rpa_instance_id: int) -> ModuleType:
-    clone_name = f"tagui_clone_{rpa_instance_id:0>2}"
+    rpa_clone_name = f"tagui_clone_{rpa_instance_id:0>2}"
     tagui_py_fpath = os.path.join(os.path.dirname(rpa.__file__), f"tagui.py")
-    tagui_clone_py_fpath = os.path.join(os.path.dirname(rpa.__file__), f"{clone_name}.py")
+    tagui_clone_py_fpath = os.path.join(cloned_module_directory, f"{rpa_clone_name}.py")
 
     if not os.path.exists(tagui_clone_py_fpath):
         with open(tagui_py_fpath, "r") as file:
@@ -41,8 +45,15 @@ def get_rpa_clone(rpa_instance_id: int) -> ModuleType:
         with open(tagui_clone_py_fpath, "w") as file:
             file.write(program)
 
-    rpa_clone = import_module(clone_name)
-    tagui_clone_dpath = os.path.join(rpa.tagui_location(), clone_name)
+    # Dynamically import rpa_clone module   
+    rpa_clone_spec = spec_from_file_location(rpa_clone_name, tagui_clone_py_fpath)
+    rpa_clone = module_from_spec(rpa_clone_spec)
+    sys.modules[rpa_clone_name] = rpa_clone
+    rpa_clone_spec.loader.exec_module(rpa_clone)
+
+    tagui_clone_dpath = os.path.join(cloned_source_directory if cloned_source_directory else
+            rpa.tagui_location(), rpa_clone_name)
+    
     rpa_clone.tagui_location(tagui_clone_dpath)
     
     if not os.path.exists(tagui_clone_dpath):
@@ -93,7 +104,7 @@ def set_delays(rpa_instance: rpa, chrome_scan_period: int = 100000, looping_dela
     tagui_header_fpath = os.path.join(tagui_dpath, tagui_dirname(), "src", "tagui_header.js")
     tagui_sikuli_fpath = os.path.join(tagui_dpath, tagui_dirname(), "src", "tagui.sikuli", "tagui.py")
 
-    if not os.path.exists(tagui_dpath):
+    if not os.path.exists(tagui_chrome_fpath):
         # Binaries and files not downloaded
         rpa_instance.setup()
 
@@ -168,6 +179,19 @@ def sync_rpa_manager(sync_manager: SyncManager) -> None:
     rpa_manager.rpa_instances = sync_manager.dict()
     rpa_manager.semaphore = sync_manager.Semaphore(1)
 
+# Setters
+def set_rpa_source_directory(dir_path: str) -> None:
+    rpa.tagui_location(dir_path)
+
+def set_cloned_module_directory(dir_path: str) -> None:
+    global cloned_module_directory
+    cloned_module_directory = dir_path
+
+def set_cloned_source_directory(dir_path: str) -> None:
+    global cloned_source_directory
+    cloned_source_directory = dir_path
+
+# Removers
 def destroy_clones() -> None:
     # Todo
     pass

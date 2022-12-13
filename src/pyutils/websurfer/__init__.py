@@ -70,5 +70,20 @@ class WebsurferBase:
     def __exit__(self, *args) -> None:
         return self.close()
 
+class PageRenderedPredicate:
+    # Checks whether there were changes to the webpage source.
+    def __init__(self, websurfer: WebsurferBase):
+        self.websurfer = websurfer
+        self.page_source = self.websurfer.page_source()
+    
+    def __call__(self) -> bool:
+        page_source = self.websurfer.page_source()
+
+        if page_source == self.page_source:
+            return True
+
+        self.page_source = page_source
+        return False
+
 if __name__ == "__main__":
     pass
