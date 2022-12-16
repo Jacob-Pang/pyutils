@@ -66,6 +66,7 @@ class CommandBotBase:
         self.client = client
         self.bot_token = bot_token
         self.name = name
+        self.shortcuts = dict[str, str]()
         self.request_location_futures = dict[int, asyncio.Future]()
 
         # Tracks mapping of process_alias to (process, output_chat_id)
@@ -148,9 +149,26 @@ class CommandBotBase:
         
         await self.client.send_message(sender_id, message, parse_mode="HTML")
 
+    async def make_shortcut(self, event: events.NewMessage.Event, command: str) -> None:
+        shortcut, command = command.split(' ', maxsplit=1)
+        shortcut = shortcut.strip()
+        command = command.strip()
+
+        if not command.startswith('/'):
+            command = '/' + command
+        
+        self.shortcuts[shortcut] = command
+        await self.echo(event, f"shortcut [/{shortcut} -> {command}] created.")
+
+    async def rm_shortcut(self, event: events.NewMessage.Event, shortcut: str) -> None:
+        if shortcut in self.shortcuts:
+            return self.shortcuts.pop(shortcut)
+
+        await self.echo(event, f"<b>Error:</b> shortcut [{shortcut}] not found.")
+
     async def cmd(self, event: events.NewMessage.Event, args_text: str = None) -> None:
         if args_text:
-            await self.execute(event, f"cmd.exe {args_text}")
+            await self.execute(event, f"{args_text} cmd.exe")
         else:
             await self.execute(event, "cmd.exe")
 
@@ -172,8 +190,8 @@ class CommandBotBase:
 
         await self.echo(event, f"<b>Process [{process_alias}]</b> started and active.", sender_id=sender_id)
 
-        Thread(target=self.pipe_process_outputs, args=(process_alias,)).start()
         Thread(target=self.pipe_process_errors, args=(process_alias,)).start()
+        Thread(target=self.pipe_process_outputs, args=(process_alias,)).start()
 
         self.active_processes[sender_id].append(process_alias)
 
@@ -199,9 +217,8 @@ class CommandBotBase:
         sender_id = sender.id
 
         if process_alias not in self.processes:
-            await self.echo(event, f"<b>Error:</b> process alias [{process_alias}] not recognized.",
+            return await self.echo(event, f"<b>Error:</b> process alias [{process_alias}] not recognized.",
                     sender_id=sender_id)
-            return
         
         if process_alias in self.active_processes[sender_id]:
             if process_alias == self.active_processes[sender_id][-1]:
@@ -248,53 +265,65 @@ class CommandBotBase:
         self.request_location_futures[sender_id].set_result(event.geo)
         await self.client.send_message(sender_id, "Location updated.", buttons=Button.clear())
 
+    async def keyword_decay_handler(self, event: events.NewMessage.Event, args_text: str) -> str:
+        if r"%location%" in args_text:
+            sender = await event.get_sender()
+            sender_id = sender.id
+
+            if not sender_id in self.request_location_futures:
+                await self.request_location(event)
+
+            geopoint = await self.request_location_futures[sender_id]
+            args_text = args_text.replace(r"%location%", f"--long {geopoint.long} "
+                    + f"--lat {geopoint.lat} --access_hash {geopoint.access_hash}")
+
+            self.request_location_futures.pop(sender_id) # Consume futures
+
+        return args_text
+
     async def command_event_handler(self, event: events.NewMessage.Event):
-        # Parse command
-        _, command = str(event.raw_text).split('/', maxsplit=1)
-        command = command.strip()
-        command_args_text = None
-        
-        if ' ' in command:
-            # command has args
-            command_name, command_args_text = command.split(' ', maxsplit=1)
-            command_name = command_name.strip()
-            command_args_text = command_args_text.strip()
-        else:
-            command_name = command
-
-        if command_args_text: # Substitute keywords
-            if r"%location%" in command_args_text:
-                sender = await event.get_sender()
-                sender_id = sender.id
-
-                if not sender_id in self.request_location_futures:
-                    await self.request_location(event)
-
-                geopoint = await self.request_location_futures[sender_id]
-                command_args_text = command_args_text.replace(r"%location%", f"--long {geopoint.long} "
-                        + f"--lat {geopoint.lat} --access_hash {geopoint.access_hash}")
-
-                self.request_location_futures.pop(sender_id) # Consume futures
-
-        try: # Execute command wrapper
-            if "handler" in command_name:
-                await self.echo(event, f"<b>Error:</b> cannot invoke event_handler commands.")
-                return
-            elif not hasattr(self, command_name):
-                if command_name in self.active_processes[sender_id]:
-                    # activate-input shortcut
-                    await self.activate(event, command_name)
-                    command_name = "input"
-                else:
-                    await self.echo(event, f"<b>Error:</b> command [{command_name}] not recognized.")
-                    return
+        async def command_handler(command: str):
+            _, command = command.split('/', maxsplit=1)
+            command = command.strip()
+            args_text = ""
             
-            if command_args_text:
-                await getattr(self, command_name)(event, command_args_text)
+            if ' ' in command:
+                # command has args
+                command_name, args_text = command.split(' ', maxsplit=1)
+                command_name = command_name.strip()
+                args_text = args_text.strip()
             else:
-                await getattr(self, command_name)(event)
-        except Exception as exception:
-            await self.echo(event, f"<b>Exception encountered:</b>\n{exception}")
+                command_name = command
+
+            try: # Execute command wrapper
+                if command_name in self.shortcuts:
+                    return await command_handler(f"{self.shortcuts.get(command_name)} {args_text}")
+                elif "handler" in command_name:
+                    return await self.echo(event, f"<b>Error:</b> cannot invoke handler commands.")
+                elif not hasattr(self, command_name):
+                    sender = await event.get_sender()
+                    sender_id = sender.id
+
+                    if command_name in self.active_processes[sender_id]:
+                        # /activate-input shortcut
+                        await self.activate(event, command_name)
+                        command_name = "input"
+                    else:
+                        return await self.echo(event, f"<b>Error:</b> command [{command_name}]"
+                                + " not recognized.")
+                
+                if command_name != "make_shortcut":
+                    args_text = await self.keyword_decay_handler(event, args_text)
+
+                if args_text:
+                    await getattr(self, command_name)(event, args_text)
+                else:
+                    await getattr(self, command_name)(event)
+            except Exception as exception:
+                await self.echo(event, f"<b>Exception encountered:</b>\n{exception}")
+
+        # Parse command
+        await command_handler(str(event.raw_text))
 
 if __name__ == "__main__":
     pass
