@@ -131,7 +131,7 @@ class CommandBotBase:
             "<b>Keyword List:</b>\n" +
             "Keywords are substituted at runtime and use the format <i>%keyword%</i>.\n" +
             "<i>location</i>\n" +
-            "   Returns <i>--long longtitude --lat latitude --access_hash access_hash</i>\n"
+            "   Returns <i>-longitude longtitude -latitude latitude -access_hash access_hash</i>\n"
             "\n<b>Command List:</b>\n" +
             "<i>/echo</i>\n" +
             "   Repeats the message contents (keywords are broken down).\n" +
@@ -277,8 +277,8 @@ class CommandBotBase:
                 await self.request_location(event)
 
             geopoint = await self.request_location_futures[sender_id]
-            args_text = args_text.replace(r"%location%", f"--long {geopoint.long} "
-                    + f"--lat {geopoint.lat} --access_hash {geopoint.access_hash}")
+            args_text = args_text.replace(r"%location%", f"-longitude {geopoint.long} "
+                    + f"-latitude {geopoint.lat} -access_hash {geopoint.access_hash}")
 
             self.request_location_futures.pop(sender_id) # Consume futures
 
