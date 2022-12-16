@@ -80,13 +80,15 @@ class CommandBotBase:
         self.client.start(bot_token=self.bot_token)
 
     # Process managers
-    def pipe_process_outputs(self, process_alias: str):
+    def pipe_process_outputs(self, process_alias: str, edit_message: events.NewMessage = None):
         process, output_chat_id = self.processes[process_alias]
 
         for output in process.stdout:
-            try:    message = f"<b>Process [{process_alias}]</b>:\n{output.decode('utf-8')}"
-            except: message = f"<b>Process [{process_alias}]</b>:\n(undecoded) {output}"
-            send_telegram_message(self.bot_token, output_chat_id, message)
+            try:    output = output.decode('utf-8')
+            except: output = f"(undecoded) {output}"
+
+            output = output.replace('\r', '\n')
+            send_telegram_message(self.bot_token, output_chat_id, f"<b>Process [{process_alias}]</b>:\n{output}")
 
         process.wait()
         self.kill_process(process_alias) # Does not invoke Popen.terminate
@@ -95,10 +97,11 @@ class CommandBotBase:
         process, output_chat_id = self.processes[process_alias]
 
         for output in process.stderr:
-            try:    message = f"<b>Process [{process_alias}] Error</b>:\n{output.decode('utf-8')}"
-            except: message = f"<b>Process [{process_alias}] Error</b>:\n(undecoded) {output}"
+            try:    output = output.decode('utf-8')
+            except: output = f"(undecoded) {output}"
 
-            send_telegram_message(self.bot_token, output_chat_id, message)
+            output = output.replace('\r', '\n')
+            send_telegram_message(self.bot_token, output_chat_id, f"<b>Process [{process_alias}] Error</b>:\n{output}")
 
     def kill_process(self, process_alias: str):
         if process_alias not in self.processes:
