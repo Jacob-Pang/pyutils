@@ -1,10 +1,11 @@
+import asyncio
 import os
 import json
 import requests
 
 from collections import defaultdict
 from subprocess import Popen, PIPE
-from telethon import TelegramClient, events
+from telethon import TelegramClient, Button, events
 from threading import Thread
 
 def send_telegram_message(bot_token: str, chat_id: str, message: str) -> None:
@@ -29,68 +30,35 @@ def make_bot_from_config(config_json: str) -> "CommandBotBase":
 
 def run_command_bot(command_bot: "CommandBotBase") -> None:
     @command_bot.client.on(events.NewMessage(pattern="/(?i)"))
-    async def run_event_handler(event):
-        await command_bot.event_handler(event)
-    
-    command_bot.start()
+    async def run_message_event_handler(event):
+        await command_bot.command_event_handler(event)
+
+    @command_bot.client.on(events.NewMessage(func=lambda event: event.geo))
+    async def receive_location_handler(event):
+        await command_bot.receive_location_handler(event)
+
+    command_bot.start_client()
     command_bot.client.run_until_disconnected()
 
 
 class CommandBotBase:
-    class ProcessArgsParser:
-        set_alias_flag = "-alias"
-        set_cwd_flag = "-cwd"
+    @staticmethod
+    def parse_process_flags(flags: dict[str, any], args_text: str) -> str:
+        for flag in flags:
+            if args_text.startswith(flag):
+                args_text = args_text.removeprefix(flag).strip()
+                flag_value, args_text = args_text.split(' ', maxsplit=1)
 
-        def __init__(self) -> None:
-            self.args = []
-            self.encapsulator = None
-            self.setter_flag = None
+                flags[flag] = flag_value
+                return CommandBotBase.parse_process_flags(flags, args_text.strip())
 
-            self.cwd = os.getcwd()
-            self.process_alias = None
-        
-        def parse_arg(self, arg: str) -> None:
-            if arg in [self.set_alias_flag, self.set_cwd_flag]:
-                assert not self.setter_flag # No active setter_flag
-                self.setter_flag = arg
-            elif self.setter_flag:
-                if self.setter_flag == self.set_alias_flag:
-                    self.process_alias = arg.strip()
-                elif self.setter_flag == self.set_cwd_flag:
-                    self.cwd = arg.strip()
-                
-                self.setter_flag = None
-            else:
-                self.args.append(arg)
-
-                if arg == "py":
-                    self.args.append("-u")
-
-        def parse_args(self, args_text: str) -> None:
-            arg = ""
-
-            for char in args_text:
-                if not self.encapsulator and (char == "'" or char == '"'):
-                    self.encapsulator = char
-                elif char == self.encapsulator:
-                    self.encapsulator = None
-                elif char != ' ' or self.encapsulator:
-                    arg += char
-                elif arg: # Argument found
-                    self.parse_arg(arg)
-                    arg = "" # Reset
-            
-            if arg:
-                self.parse_arg(arg)
+        return args_text
 
     def __init__(self, client: TelegramClient, bot_token: str, name: str = "CommandBot"):
         self.client = client
         self.bot_token = bot_token
         self.name = name
-
-        # Current command vars
-        self.cmd_sender_id = None
-        self.cmd_chat_id = None
+        self.request_location_futures = dict[int, asyncio.Future]()
 
         # Tracks mapping of process_alias to (process, output_chat_id)
         self.processes = dict[str, tuple[Popen, int]]()
@@ -99,10 +67,10 @@ class CommandBotBase:
         self.active_processes = defaultdict(list[str])
 
     # Initializer
-    def start(self):
+    def start_client(self):
         self.client.start(bot_token=self.bot_token)
 
-    # Process handlers
+    # Process managers
     def pipe_process_outputs(self, process_alias: str):
         process, output_chat_id = self.processes[process_alias]
 
@@ -145,96 +113,165 @@ class CommandBotBase:
             f"<b>Process [{process_alias}]</b> closed."
         )
 
-    # Event handlers
-    async def event_handler(self, event):
-        _, command = str(event.raw_text).split('/', maxsplit=1)
-        command = command.strip()
-        command_args = None
+    # Commands
+    async def help(self, event: events.NewMessage.Event):
+        await self.echo(event,
+            "<b>Keyword List:</b>\n" +
+            "Keywords are substituted at runtime and use the format <i>%keyword%</i>.\n" +
+            "<i>location</i>\n" +
+            "   Returns <i>--long longtitude --lat latitude --access_hash access_hash</i>\n"
+            "\n<b>Command List:</b>\n" +
+            "<i>/echo</i>\n" +
+            "   Repeats the message contents (keywords are broken down).\n" +
+            "<i>/cmd -alias name -cwd dpath</i>\n" +
+            "   Opens an asynchronous command shell.\n" +
+            "<i>/execute -alias name -cwd dpath command</i>\n" +
+            "   Executes the command asynchronously."
+        )
 
-        sender = await event.get_sender()
-        chat = await event.get_chat()
-        self.cmd_sender_id = sender.id
-        self.cmd_chat_id = chat.id
-        
-        if ' ' in command:
-            # command has args
-            command_name, command_args = command.split(' ', maxsplit=1)
-            command_name = command_name.strip()
-            command_args = command_args.strip()
-        else:
-            command_name = command
-
-        try: # Execute command wrapper
-            if not hasattr(self, command_name):
-                await self.echo(f"<b>Error:</b> command [{command_name}] not recognized.")
-            elif command_args:
-                await getattr(self, command_name)(command_args)
-            else:
-                await getattr(self, command_name)()
-        except Exception as exception:
-            await self.echo(f"<b>Exception encountered:</b>\n{exception}")
-
-    async def disconnect(self):
-        await self.echo(f"{self.name} disconnected.")
+    async def disconnect(self, event: events.NewMessage.Event):
+        await self.echo(event, f"{self.name} disconnected.")
         await self.client.disconnect()
 
-    async def echo(self, message: str) -> None:
-        await self.client.send_message(self.cmd_sender_id, message, parse_mode="HTML")
+    async def echo(self, event: events.NewMessage.Event, message: str, sender_id: int = None) -> None:
+        if not sender_id:
+            sender = await event.get_sender()
+            sender_id = sender.id
+        
+        await self.client.send_message(sender_id, message, parse_mode="HTML")
 
-    async def cmd(self, args_text: str = None) -> None:
+    async def cmd(self, event: events.NewMessage.Event, args_text: str = None) -> None:
         if args_text:
-            await self.execute(f"cmd.exe {args_text}")
+            await self.execute(event, f"cmd.exe {args_text}")
         else:
-            await self.execute("cmd.exe")
+            await self.execute(event, "cmd.exe")
 
-    async def execute(self, args_text: str) -> None:
-        args_parser = CommandBotBase.ProcessArgsParser()
-        args_parser.parse_args(args_text)
+    async def execute(self, event: events.NewMessage.Event, args_text: str) -> None:
+        chat = await event.get_chat()
+        sender = await event.get_sender()
 
-        process = Popen(args_parser.args, stdin=PIPE, stdout=PIPE, stderr=PIPE, cwd=args_parser.cwd)
-        process_alias = args_parser.process_alias if args_parser.process_alias else str(process.pid)
-        self.processes[process_alias] = (process, self.cmd_chat_id)
+        chat_id = chat.id
+        sender_id = sender.id
 
-        await self.echo(f"<b>Process [{process_alias}]</b> started and active.")
+        # Parse /execute flags
+        flags = { "-alias": None, "-cwd": os.getcwd() }
+        args_text = self.parse_process_flags(flags, args_text)
+        process = Popen(args_text, stdin=PIPE, stdout=PIPE, stderr=PIPE, cwd=flags.get("-cwd"))
+
+        process_alias = flags.get("-alias") if flags.get("-alias") else str(process.pid)
+        self.processes[process_alias] = (process, chat_id)
+
+        await self.echo(event, f"<b>Process [{process_alias}]</b> started and active.", sender_id=sender_id)
 
         Thread(target=self.pipe_process_outputs, args=(process_alias,)).start()
         Thread(target=self.pipe_process_errors, args=(process_alias,)).start()
 
-        self.active_processes[self.cmd_sender_id].append(process_alias)
+        self.active_processes[sender_id].append(process_alias)
 
-    async def close(self, process_alias: str = None) -> None:
-        active_process_alias = self.active_processes[self.cmd_chat_id][-1] \
-            if self.active_processes[self.cmd_chat_id] else None
+    async def close(self, event: events.NewMessage.Event, process_alias: str = None) -> None:
+        chat = await event.get_chat()
+        chat_id = chat.id
+
+        active_process_alias = self.active_processes[chat_id][-1] \
+            if self.active_processes[chat_id] else None
 
         if not process_alias: # Assign to active process
             process_alias = active_process_alias
         
         if not process_alias:
-            await self.echo(f"<b>Error:</b> No active process found.")
+            await self.echo(event, f"<b>Error:</b> No active process found.")
             return
 
         self.kill_process(process_alias)
 
-    async def activate(self, process_alias: str) -> None:
+    async def activate(self, event: events.NewMessage.Event, process_alias: str) -> None:
         # Activates the process (sets to current active process)
+        sender = await event.get_sender()
+        sender_id = sender.id
+
         if process_alias not in self.processes:
-            await self.echo(f"<b>Error:</b> process alias [{process_alias}] not recognized.")
+            await self.echo(event, f"<b>Error:</b> process alias [{process_alias}] not recognized.",
+                    sender_id=sender_id)
             return
         
-        if process_alias in self.active_processes[self.cmd_sender_id]:
-            self.active_processes[self.cmd_sender_id].remove(process_alias)
+        if process_alias in self.active_processes[sender_id]:
+            self.active_processes[sender_id].remove(process_alias)
 
-        self.active_processes[self.cmd_sender_id].append(process_alias)
+        self.active_processes[sender_id].append(process_alias)
 
-    async def input(self, pipe_input: str) -> None:
+    async def input(self, event: events.NewMessage.Event, pipe_input: str) -> None:
         # Pipes the input to the active process
-        if not self.active_processes[self.cmd_sender_id]:
-            await self.echo(f"<b>Error:</b> No active process found.")
+        sender = await event.get_sender()
+        sender_id = sender.id
+
+        if not self.active_processes[sender_id]:
+            await self.echo(event, f"<b>Error:</b> No active process found.", sender_id=sender_id)
         else:
-            process_alias = self.active_processes[self.cmd_sender_id][-1]
+            process_alias = self.active_processes[sender_id][-1]
             process, _ = self.processes[process_alias]
             process.stdin.write(f"{pipe_input}\r\n".encode("utf-8"))
             process.stdin.flush()
+
+    async def request_location(self, event: events.NewMessage.Event) -> None:
+        sender = await event.get_sender()
+        sender_id = sender.id
+
+        event_loop = asyncio.get_running_loop()
+        self.request_location_futures[sender_id] = event_loop.create_future()
+
+        await self.client.send_message(
+            sender_id, "Requesting for current location ...",
+            buttons=[ Button.request_location("share current location", single_use=1) ]
+        )
+
+    # Event handlers
+    async def receive_location_handler(self, event: events.NewMessage.Event):
+        sender = await event.get_sender()
+        sender_id = sender.id
+
+        if not sender_id in self.request_location_futures:
+            return
+
+        self.request_location_futures[sender_id].set_result(event.geo)
+        await self.client.send_message(sender_id, "Location updated.", buttons=Button.clear())
+
+    async def command_event_handler(self, event: events.NewMessage.Event):
+        # Parse command
+        _, command = str(event.raw_text).split('/', maxsplit=1)
+        command = command.strip()
+        command_args_text = None
+        
+        if ' ' in command:
+            # command has args
+            command_name, command_args_text = command.split(' ', maxsplit=1)
+            command_name = command_name.strip()
+            command_args_text = command_args_text.strip()
+        else:
+            command_name = command
+
+        if command_args_text: # Substitute keywords
+            if r"%location%" in command_args_text:
+                sender = await event.get_sender()
+                sender_id = sender.id
+
+                if not sender_id in self.request_location_futures:
+                    await self.request_location(event)
+
+                geopoint = await self.request_location_futures[sender_id]
+                command_args_text = command_args_text.replace(r"%location%", f"--long {geopoint.long} "
+                        + f"--lat {geopoint.lat} --access_hash {geopoint.access_hash}")
+
+                self.request_location_futures.pop(sender_id) # Consume futures
+
+        try: # Execute command wrapper
+            if not hasattr(self, command_name) or "handler" in command_name:
+                await self.echo(event, f"<b>Error:</b> command [{command_name}] not recognized.")
+            elif command_args_text:
+                await getattr(self, command_name)(event, command_args_text)
+            else:
+                await getattr(self, command_name)(event)
+        except Exception as exception:
+            await self.echo(event, f"<b>Exception encountered:</b>\n{exception}")
 
 if __name__ == "__main__":
     pass
