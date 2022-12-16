@@ -195,6 +195,9 @@ class CommandBotBase:
             return
         
         if process_alias in self.active_processes[sender_id]:
+            if process_alias == self.active_processes[sender_id][-1]:
+                return # Currently the active process
+
             self.active_processes[sender_id].remove(process_alias)
 
         self.active_processes[sender_id].append(process_alias)
@@ -264,9 +267,19 @@ class CommandBotBase:
                 self.request_location_futures.pop(sender_id) # Consume futures
 
         try: # Execute command wrapper
-            if not hasattr(self, command_name) or "handler" in command_name:
-                await self.echo(event, f"<b>Error:</b> command [{command_name}] not recognized.")
-            elif command_args_text:
+            if "handler" in command_name:
+                await self.echo(event, f"<b>Error:</b> cannot invoke event_handler commands.")
+                return
+            elif not hasattr(self, command_name):
+                if command_name in self.active_processes[sender_id]:
+                    # activate-input shortcut
+                    await self.activate(event, command_name)
+                    command_name = "input"
+                else:
+                    await self.echo(event, f"<b>Error:</b> command [{command_name}] not recognized.")
+                    return
+            
+            if command_args_text:
                 await getattr(self, command_name)(event, command_args_text)
             else:
                 await getattr(self, command_name)(event)
