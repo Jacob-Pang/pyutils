@@ -4,12 +4,15 @@ from .manager import set_delays
 
 class RPAWebSurfer (WebsurferBase):
     def __init__(self, visual_automation: bool = False, chrome_browser: bool = True,\
-        headless_mode: bool = False, turbo_mode: bool = False, **delay_config):
+        headless_mode: bool = False, turbo_mode: bool = False, chrome_scan_period: int = 100000,
+        looping_delay: bool = True, sleep_period: int = 500, engine_scan_period: int = .5):
 
         WebsurferBase.__init__(self, headless_mode=headless_mode)
         self.rpa = rpa_manager.get_rpa_instance()
 
-        set_delays(self.rpa, **delay_config)
+        set_delays(self.rpa, chrome_scan_period=chrome_scan_period, looping_delay=looping_delay,
+                sleep_period=sleep_period, engine_scan_period=engine_scan_period)
+        
         self.rpa.init(visual_automation=visual_automation, chrome_browser=chrome_browser,
                 headless_mode=headless_mode, turbo_mode=turbo_mode)
 
