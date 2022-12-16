@@ -1,6 +1,7 @@
 import asyncio
-import os
 import json
+import os
+import re
 import requests
 
 from collections import defaultdict
@@ -51,6 +52,13 @@ class CommandBotBase:
 
                 flags[flag] = flag_value
                 return CommandBotBase.parse_process_flags(flags, args_text.strip())
+
+        return args_text
+
+    @staticmethod
+    def flush_py_cmd(args_text: str) -> str:
+        args_text = re.sub(r"(^|\s)(py\s)", r"\1\2-u ", args_text)
+        args_text = re.sub(r"(^|\s)(python\s)", r"\1\2-u ", args_text)
 
         return args_text
 
@@ -156,8 +164,9 @@ class CommandBotBase:
         # Parse /execute flags
         flags = { "-alias": None, "-cwd": os.getcwd() }
         args_text = self.parse_process_flags(flags, args_text)
-        process = Popen(args_text, stdin=PIPE, stdout=PIPE, stderr=PIPE, cwd=flags.get("-cwd"))
+        args_text = self.flush_py_cmd(args_text)
 
+        process = Popen(args_text, stdin=PIPE, stdout=PIPE, stderr=PIPE, cwd=flags.get("-cwd"))
         process_alias = flags.get("-alias") if flags.get("-alias") else str(process.pid)
         self.processes[process_alias] = (process, chat_id)
 
@@ -210,6 +219,7 @@ class CommandBotBase:
         if not self.active_processes[sender_id]:
             await self.echo(event, f"<b>Error:</b> No active process found.", sender_id=sender_id)
         else:
+            pipe_input = self.flush_py_cmd(pipe_input)
             process_alias = self.active_processes[sender_id][-1]
             process, _ = self.processes[process_alias]
             process.stdin.write(f"{pipe_input}\r\n".encode("utf-8"))
