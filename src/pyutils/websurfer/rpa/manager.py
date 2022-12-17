@@ -254,6 +254,15 @@ def set_cloned_source_directory(dir_path: str) -> None:
     cloned_source_directory = dir_path
 
 # Removers
+def remove_lock_files() -> None:
+    if not os.path.exists(lock_file_directory):
+        return
+
+    for lock_file_name in os.listdir(lock_file_directory):
+        os.remove(os.path.join(lock_file_directory, lock_file_name))
+    
+    os.rmdir(lock_file_directory)
+
 def destroy_clones() -> None:
     # Todo
     pass
