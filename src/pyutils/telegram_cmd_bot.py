@@ -8,6 +8,7 @@ from collections import defaultdict
 from subprocess import Popen, PIPE
 from telethon import TelegramClient, Button, events
 from threading import Thread
+from .websurfer.rpa import manager
 
 def send_telegram_message(bot_token: str, chat_id: str, message: str) -> None:
     for _ in range(99):
@@ -281,6 +282,14 @@ class CommandBotBase:
                     + f"-latitude {geopoint.lat} -access_hash {geopoint.access_hash}")
 
             self.request_location_futures.pop(sender_id) # Consume futures
+        if r"%rpa%" in args_text:
+            rpa_instance_id = manager.rpa_manager.assign_rpa_instance_id()
+            args_text = args_text.replace(r"%rpa%",
+                f"-rpa_instance_id {rpa_instance_id} " +
+                f"-lock_file_dpath {manager.lock_file_directory} " +
+                f"-cloned_module_dpath {manager.cloned_module_directory} " +
+                f"-cloned_source_dpath {manager.cloned_source_directory} "
+            )
 
         return args_text
 
