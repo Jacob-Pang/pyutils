@@ -9,6 +9,7 @@ from importlib.util import spec_from_file_location, module_from_spec
 from multiprocessing import Semaphore
 from multiprocessing.managers import SyncManager
 
+lock_file_directory = os.path.join(os.path.dirname(rpa.__file__), "temp")
 cloned_module_directory = os.path.dirname(rpa.__file__)
 cloned_source_directory = None
 
@@ -145,21 +146,58 @@ def set_delays(rpa_instance: rpa, chrome_scan_period: int = 100000, looping_dela
         file.write(program)
 
 class RPAManager:
-    rpa_instances = dict()
+    rpa_instances = dict() # Track assignment, creation and destruction
     semaphore = Semaphore(1)
 
-    def get_rpa_instance(self) -> ModuleType:
+    @staticmethod
+    def get_lock_file_path(rpa_instance_id: int) -> str:
+        return os.path.join(lock_file_directory, f"{rpa_instance_id:<2}.lock")
+
+    @staticmethod
+    def make_lock_file(rpa_instance_id: int) -> None:
+        if not os.path.exists(lock_file_directory):
+            os.makedirs(lock_file_directory)
+
+        lock_file_path = RPAManager.get_lock_file_path(rpa_instance_id)
+
+        if not os.path.exists(lock_file_path):
+            open(lock_file_path).close()
+
+    @staticmethod
+    def destroy_lock_file(rpa_instance_id: int) -> None:
+        if not os.path.exists(lock_file_directory):
+            return
+
+        lock_file_path = RPAManager.get_lock_file_path(rpa_instance_id)
+
+        if os.path.exists(lock_file_path):
+            os.remove(lock_file_path)
+        
+        if len(os.listdir(lock_file_directory)) == 0:
+            os.remove(lock_file_directory)
+
+    def assign_rpa_instance_id(self) -> int:
+        # Assign an rpa_instance_id to the calling process
         with self.semaphore:
             rpa_instance_id = 0
 
             while rpa_instance_id in self.rpa_instances:
                 rpa_instance_id += 1
-            
-            self.rpa_instances[rpa_instance_id] = 0
+
+            self.rpa_instances[rpa_instance_id] = None
+            self.make_lock_file(rpa_instance_id)
+
+            return rpa_instance_id
+
+    def get_rpa_instance(self, rpa_instance_id: int = None) -> ModuleType:
+        if not rpa_instance_id:
+            rpa_instance_id = self.assign_rpa_instance_id()
 
         rpa_instance = get_rpa_clone(rpa_instance_id) if rpa_instance_id else rpa
         setattr(rpa_instance, "rpa_instance_id", rpa_instance_id)
 
+        # Generates entry if entry does not exist
+        self.rpa_instances[rpa_instance_id] = rpa_instance
         return rpa_instance
     
     def destroy_rpa_instance(self, rpa_instance: rpa) -> None:
@@ -169,7 +207,15 @@ class RPAManager:
         set_delays(rpa_instance) # Resets settings
 
         with self.semaphore:
-            self.rpa_instances.pop(rpa_instance.rpa_instance_id)
+            rpa_instance_id: int = rpa_instance.rpa_instance_id
+
+            self.rpa_instances.pop(rpa_instance_id)
+            self.destroy_lock_file(rpa_instance_id)
+
+    def __del__(self) -> None:
+        # Destructor method
+        for rpa_instance_id in list[int](self.rpa_instances.keys()):
+            self.destroy_rpa_instance(self.rpa_instances[rpa_instance_id])
 
 rpa_manager = RPAManager()
 
@@ -182,6 +228,10 @@ def sync_rpa_manager(sync_manager: SyncManager) -> None:
 # Setters
 def set_rpa_source_directory(dir_path: str) -> None:
     rpa.tagui_location(dir_path)
+
+def set_lock_file_directory(dir_path: str) -> None:
+    global lock_file_directory
+    lock_file_directory = dir_path
 
 def set_cloned_module_directory(dir_path: str) -> None:
     global cloned_module_directory
