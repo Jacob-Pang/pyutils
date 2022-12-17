@@ -223,9 +223,9 @@ class RPAManager:
     
     def destroy_rpa_instance(self, rpa_instance_or_id: (ModuleType | int)) -> None:
         # Closes the rpa and recycles the use of the rpa_instance
-        rpa_instance, rpa_instance_id = self.rpa_instances[rpa_instance_or_id], rpa_instance_or_id \
+        rpa_instance, rpa_instance_id = (self.rpa_instances[rpa_instance_or_id], rpa_instance_or_id) \
                 if isinstance(rpa_instance_or_id, int) else \
-                rpa_instance_or_id, rpa_instance_or_id.rpa_instance_id
+                (rpa_instance_or_id, rpa_instance_or_id.rpa_instance_id)
 
         if rpa_instance:
             rpa_instance.close()
