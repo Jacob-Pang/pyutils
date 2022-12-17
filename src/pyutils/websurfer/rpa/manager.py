@@ -9,7 +9,7 @@ from importlib.util import spec_from_file_location, module_from_spec
 from multiprocessing import Semaphore
 from multiprocessing.managers import SyncManager
 
-lock_file_directory = os.path.join(os.getcwd(), "temp")
+lock_file_directory = os.path.join(os.path.dirname(rpa.__file__), "temp")
 cloned_module_directory = os.path.dirname(rpa.__file__)
 cloned_source_directory = None
 
