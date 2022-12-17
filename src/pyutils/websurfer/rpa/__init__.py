@@ -1,21 +1,26 @@
 import rpa
 
 from .. import WebsurferBase, Identifier
+from .manager import RPAManager
 from .manager import rpa_manager
-from .manager import set_delays
 
 class RPAWebSurfer (WebsurferBase):
-    def __init__(self, visual_automation: bool = False, chrome_browser: bool = True,\
-        headless_mode: bool = False, turbo_mode: bool = False, chrome_scan_period: int = 100000,
-        looping_delay: bool = True, sleep_period: int = 500, engine_scan_period: int = .5,
-        rpa_instance_id: int = None):
+    def __init__(self, visual_automation: bool = False, chrome_browser: bool = True,
+        headless_mode: bool = False, turbo_mode: bool = False, rpa_manager: RPAManager = rpa_manager,
+        rpa_instance_id: int = None, chrome_scan_period: int = 100000, looping_delay: bool = True,
+        sleep_period: int = 500, engine_scan_period: int = .5, incognito_mode: bool = False):
 
         WebsurferBase.__init__(self, headless_mode=headless_mode)
-        self.rpa: rpa = rpa_manager.get_rpa_instance(rpa_instance_id)
+        self.rpa_manager = rpa_manager
+        self.rpa: rpa = self.rpa_manager.get_rpa_instance(rpa_instance_id)
 
-        set_delays(self.rpa, chrome_scan_period=chrome_scan_period, looping_delay=looping_delay,
-                sleep_period=sleep_period, engine_scan_period=engine_scan_period)
-        
+        # Setting RPA config
+        self.rpa_manager.set_delay_config(self.rpa, chrome_scan_period=chrome_scan_period,
+                looping_delay=looping_delay, sleep_period=sleep_period,
+                engine_scan_period=engine_scan_period)
+
+        self.rpa_manager.set_flags(self.rpa, incognito_mode=incognito_mode)
+
         self.rpa.init(visual_automation=visual_automation, chrome_browser=chrome_browser,
                 headless_mode=headless_mode, turbo_mode=turbo_mode)
 

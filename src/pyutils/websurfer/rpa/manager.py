@@ -5,23 +5,40 @@ import rpa
 import sys
 
 from types import ModuleType
-from importlib.util import spec_from_file_location, module_from_spec
 from multiprocessing import Semaphore
 from multiprocessing.managers import SyncManager
-
-lock_file_directory = os.path.join(os.path.dirname(rpa.__file__), "temp")
-cloned_module_directory = os.path.dirname(rpa.__file__)
-cloned_source_directory = None
+from importlib.util import spec_from_file_location, module_from_spec
 
 def get_remote_debugging_port(rpa_instance_id: int) -> str:
     return str(9222 - rpa_instance_id)
 
-def tagui_dirname() -> str:
+def get_tagui_folder_name() -> str:
     if platform.system() == "Windows":
         return "tagui"
     
     return ".tagui"
 
+def get_tagui_cmd_fpath(rpa_instance: rpa) -> str:
+    return os.path.join(rpa_instance.tagui_location(), get_tagui_folder_name(),
+            "src", "tagui.cmd")
+
+def get_tagui_chrome_fpath(rpa_instance: rpa) -> str:
+    return os.path.join(rpa_instance.tagui_location(), get_tagui_folder_name(),
+            "src", "tagui_chrome.php")
+
+def get_tagui_header_fpath(rpa_instance: rpa) -> str:
+    return os.path.join(rpa_instance.tagui_location(), get_tagui_folder_name(),
+            "src", "tagui_header.js")
+
+def get_tagui_sikuli_fpath(rpa_instance: rpa) -> str:
+    return os.path.join(rpa_instance.tagui_location(), get_tagui_folder_name(),
+            "src", "tagui.sikuli", "tagui.py")
+
+def get_end_chrome_cmd_fpath(rpa_instance: rpa) -> str:
+    return os.path.join(rpa_instance.tagui_location(), get_tagui_folder_name(),
+            "src", "end_chrome.cmd")
+
+# RPAInstance methods
 def get_rpa_clone(rpa_instance_id: int) -> ModuleType:
     rpa_clone_name = f"tagui_clone_{rpa_instance_id:0>2}"
     tagui_py_fpath = os.path.join(os.path.dirname(rpa.__file__), f"tagui.py")
@@ -60,13 +77,12 @@ def get_rpa_clone(rpa_instance_id: int) -> ModuleType:
     if not os.path.exists(tagui_clone_dpath):
         os.mkdir(tagui_clone_dpath)
         rpa_clone.setup()
-
-        # overwrite tagui.cmd to prevent port conflicts
-        tagui_cmd_fpath = os.path.join(tagui_clone_dpath, tagui_dirname(), "src", "tagui.cmd")
+        tagui_cmd_fpath = get_tagui_cmd_fpath(rpa_clone)
 
         with open(tagui_cmd_fpath, "r") as file:
             program = file.read()
 
+        # Change debugging port number
         program = program.replace("9222", get_remote_debugging_port(rpa_instance_id))
 
         os.remove(tagui_cmd_fpath)
@@ -78,10 +94,9 @@ def get_rpa_clone(rpa_instance_id: int) -> ModuleType:
     return rpa_clone
 
 def end_chrome_process(rpa_instance: rpa) -> None:
-    end_chrome_cmd = os.path.join(rpa_instance.tagui_location(), tagui_dirname(),
-            "src", "end_chrome.cmd")
+    end_chrome_cmd_fpath = get_end_chrome_cmd_fpath(rpa_instance)
 
-    if not os.path.exists(end_chrome_cmd):
+    if not os.path.exists(end_chrome_cmd_fpath):
         # Generate end_chrome command file
         template_fpath = os.path.join(os.path.dirname(__file__), "end_chrome_template.cmd")
 
@@ -90,111 +105,158 @@ def end_chrome_process(rpa_instance: rpa) -> None:
 
         program = program.replace("9222", get_remote_debugging_port(rpa_instance.rpa_instance_id))
 
-        with open(end_chrome_cmd, "w") as file:
+        with open(end_chrome_cmd_fpath, "w") as file:
             file.write(program)
     
-    os.system('"' + end_chrome_cmd + '"')
-
-# Optimization method to speed up rpa
-def set_delays(rpa_instance: rpa, chrome_scan_period: int = 100000, looping_delay: bool = True,
-    sleep_period: int = 500, engine_scan_period: int = .5) -> None:
-    
-    # From https://github.com/tebelorg/RPA-Python/issues/120
-    tagui_dpath = rpa_instance.tagui_location()
-    tagui_chrome_fpath = os.path.join(tagui_dpath, tagui_dirname(), "src", "tagui_chrome.php")
-    tagui_header_fpath = os.path.join(tagui_dpath, tagui_dirname(), "src", "tagui_header.js")
-    tagui_sikuli_fpath = os.path.join(tagui_dpath, tagui_dirname(), "src", "tagui.sikuli", "tagui.py")
-
-    if not os.path.exists(tagui_chrome_fpath):
-        # Binaries and files not downloaded
-        rpa_instance.setup()
-
-    # modify tagui_chrome.php
-    with open(tagui_chrome_fpath, "r") as file:
-        program = file.read()
-
-    program = re.sub("scan_period = \d+;", f"scan_period = {chrome_scan_period};", program)
-    os.remove(tagui_chrome_fpath)
-
-    with open(tagui_chrome_fpath, "w") as file:
-        file.write(program)
-
-    # modify tagui_header.js
-    with open(tagui_header_fpath, "r") as file:
-        program = file.read()
-
-    program = re.sub("function sleep\(ms\) .*\n",
-        "function sleep(ms) { // helper to add delay during loops\n" if looping_delay else
-        "function sleep(ms) { return; // helper to add delay during loops\n",
-        program
-    )
-
-    program = re.sub("sleep\(\d+\)", f"sleep({sleep_period})", program)
-    os.remove(tagui_header_fpath)
-
-    with open(tagui_header_fpath, "w") as file:
-        file.write(program)
-
-    # modify tagui.sikuli/tagui.py
-    with open(tagui_sikuli_fpath, "r") as file:
-        program = file.read()
-
-    program = re.sub("scan_period = \d+", f"scan_period = {engine_scan_period}", program)
-    os.remove(tagui_sikuli_fpath)
-
-    with open(tagui_sikuli_fpath, "w") as file:
-        file.write(program)
+    os.system('"' + end_chrome_cmd_fpath + '"')
 
 class RPAManager:
-    rpa_instances = dict() # Track assignment, creation and destruction
-    semaphore = Semaphore(1)
+    @staticmethod
+    def set_rpa_source_dpath(dpath: str) -> None:
+        rpa.tagui_location(dpath)
 
     @staticmethod
-    def get_lock_file_path(rpa_instance_id: int) -> str:
-        return os.path.join(lock_file_directory, f"{rpa_instance_id}.lock")
+    def set_delay_config(rpa_instance: rpa, chrome_scan_period: int = 100000, looping_delay: bool = True,
+        sleep_period: int = 500, engine_scan_period: int = .5) -> None:
+        """
+        Sources:
+            https://github.com/tebelorg/RPA-Python/issues/120
+        """
+        tagui_chrome_fpath = get_tagui_chrome_fpath(rpa_instance)
+        tagui_header_fpath = get_tagui_header_fpath(rpa_instance)
+        tagui_sikuli_fpath = get_tagui_sikuli_fpath(rpa_instance)
+
+        if not os.path.exists(tagui_chrome_fpath):
+            # Not setup: missing binaries
+            rpa_instance.setup()
+
+        # modify tagui_chrome.php
+        with open(tagui_chrome_fpath, "r") as file:
+            program = file.read()
+
+        program = re.sub("scan_period = \d+;", f"scan_period = {chrome_scan_period};", program)
+        os.remove(tagui_chrome_fpath)
+
+        with open(tagui_chrome_fpath, "w") as file:
+            file.write(program)
+
+        # modify tagui_header.js
+        with open(tagui_header_fpath, "r") as file:
+            program = file.read()
+
+        program = re.sub("function sleep\(ms\) .*\n",
+            "function sleep(ms) { // helper to add delay during loops\n" if looping_delay else
+            "function sleep(ms) { return; // helper to add delay during loops\n",
+            program
+        )
+
+        program = re.sub("sleep\(\d+\)", f"sleep({sleep_period})", program)
+        os.remove(tagui_header_fpath)
+
+        with open(tagui_header_fpath, "w") as file:
+            file.write(program)
+
+        # modify tagui.sikuli/tagui.py
+        with open(tagui_sikuli_fpath, "r") as file:
+            program = file.read()
+
+        program = re.sub("scan_period = \d+", f"scan_period = {engine_scan_period}", program)
+        os.remove(tagui_sikuli_fpath)
+
+        with open(tagui_sikuli_fpath, "w") as file:
+            file.write(program)
+
+    @staticmethod
+    def set_flags(rpa_instance: rpa, incognito_mode: bool = False) -> None:
+        """
+        Sources:
+            https://github.com/tebelorg/RPA-Python/issues/123
+        """
+        tagui_cmd_fpath = get_tagui_cmd_fpath(rpa_instance)
+
+        if not os.path.exists(tagui_cmd_fpath):
+            # Not setup: missing binaries
+            rpa_instance.setup()
+
+        with open(tagui_cmd_fpath, 'r') as file:
+            tagui_cmd_prog = file.read()
+
+        for switches_config in re.findall(r"(chrome_switches=)([^\n]*)(--remote-debugging-port)", tagui_cmd_prog):
+            modified_config = switches_config
+
+            if incognito_mode and "--incognito" not in modified_config:
+                modified_config: str = modified_config.removesuffix("--remote-debugging-port") +\
+                        " --incognito --remote-debugging-port"
+            elif not incognito_mode and "--incognito" in modified_config:
+                modified_config: str = modified_config.replace("--incognito", '')
+            
+            modified_config = re.sub(r"\s+", ' ', modified_config) # Remove consecutive whitespaces
+            tagui_cmd_prog = tagui_cmd_prog.replace(switches_config, modified_config)
+
+        os.remove(tagui_cmd_fpath)
+
+        with open(tagui_cmd_fpath, 'w') as file:
+            file.write(tagui_cmd_prog)
+
+    def __init__(self, rpa_instance_map: dict[int, ModuleType] = dict(),
+        locking_files_dpath: str = os.path.join(os.path.dirname(rpa.__file__), "rpa_manager_temp_files"),
+        cloned_module_dpath: str = os.path.dirname(rpa.__file__), cloned_source_dpath: str = None) -> None:
+
+        self.rpa_instances = rpa_instance_map
+        self.semaphore = Semaphore(1)
+
+        self.locking_files_dpath = locking_files_dpath
+        self.cloned_module_dpath = cloned_module_dpath
+        self.cloned_source_dpath = cloned_source_dpath
     
-    @staticmethod
-    def lock_file_exists(rpa_instance_id: int) -> bool:
-        return os.path.exists(RPAManager.get_lock_file_path(rpa_instance_id))
+    # Setters
+    def sync(self, sync_manager: SyncManager) -> None:
+        self.rpa_instances = sync_manager.dict()
+        self.semaphore = sync_manager.Semaphore(1)
 
-    @staticmethod
-    def make_lock_file(rpa_instance_id: int) -> None:
-        if not os.path.exists(lock_file_directory):
-            os.makedirs(lock_file_directory)
+    # Locking files methods
+    def get_locking_file_path(self, rpa_instance_id: int) -> str:
+        return os.path.join(self.locking_files_dpath, f"{rpa_instance_id}.lock")
+    
+    def locking_file_exists(self, rpa_instance_id: int) -> bool:
+        return os.path.exists(self.get_locking_file_path(rpa_instance_id))
 
-        lock_file_path = RPAManager.get_lock_file_path(rpa_instance_id)
+    def make_locking_file(self, rpa_instance_id: int) -> None:
+        if not os.path.exists(self.locking_files_dpath):
+            os.makedirs(self.locking_files_dpath)
+
+        lock_file_path = self.get_locking_file_path(rpa_instance_id)
 
         if not os.path.exists(lock_file_path):
             lock_file = open(lock_file_path, 'w')
             lock_file.close()
 
-    @staticmethod
-    def destroy_lock_file(rpa_instance_id: int) -> None:
-        if not os.path.exists(lock_file_directory):
+    def destroy_lock_file(self, rpa_instance_id: int) -> None:
+        if not os.path.exists(self.locking_files_dpath):
             return
 
-        lock_file_path = RPAManager.get_lock_file_path(rpa_instance_id)
+        lock_file_path = self.get_locking_file_path(rpa_instance_id)
 
         if os.path.exists(lock_file_path):
             os.remove(lock_file_path)
         
-        if len(os.listdir(lock_file_directory)) == 0:
-            os.rmdir(lock_file_directory)
-
+        if len(os.listdir(self.locking_files_dpath)) == 0:
+            os.rmdir(self.locking_files_dpath)
+    
+    # Instance constructor methods
     def remove_orphans(self) -> None:
         # rpa_instances without corresponding lock_files are orphaned.
         for rpa_instance_id in list[int](self.rpa_instances.keys()):
-            if not self.lock_file_exists(rpa_instance_id):
+            if not self.locking_file_exists(rpa_instance_id):
                 self.rpa_instances.pop(rpa_instance_id)
 
     def assign_rpa_instance_id(self) -> int:
-        # Assign an rpa_instance_id to the calling process
         with self.semaphore:
             self.remove_orphans()
             rpa_instance_id = 0
 
             while True:
-                lock_file_exists = self.lock_file_exists(rpa_instance_id)
+                lock_file_exists = self.locking_file_exists(rpa_instance_id)
 
                 if not (rpa_instance_id in self.rpa_instances or lock_file_exists):
                     break
@@ -206,7 +268,7 @@ class RPAManager:
                 rpa_instance_id += 1
             
             self.rpa_instances[rpa_instance_id] = None
-            self.make_lock_file(rpa_instance_id)
+            self.make_locking_file(rpa_instance_id)
 
             return rpa_instance_id
 
@@ -227,14 +289,30 @@ class RPAManager:
                 if isinstance(rpa_instance_or_id, int) else \
                 (rpa_instance_or_id, rpa_instance_or_id.rpa_instance_id)
 
-        if rpa_instance:
+        if rpa_instance: # Purge zombie processes
             rpa_instance.close()
-            end_chrome_process(rpa_instance) # Purge zombie chrome processes
-            set_delays(rpa_instance) # Resets settings
+            end_chrome_process(rpa_instance)
+
+            # Resets settings
+            self.set_delay_config(rpa_instance)
+            self.set_flags(rpa_instance)
 
         with self.semaphore:
             self.rpa_instances.pop(rpa_instance_id)
             self.destroy_lock_file(rpa_instance_id)
+
+    # Destructors
+    def remove_clones(self) -> None:
+        raise NotImplementedError()
+
+    def remove_lock_files(self) -> None:
+        if not os.path.exists(self.locking_files_dpath):
+            return
+
+        for lock_file_name in os.listdir(self.locking_files_dpath):
+            os.remove(os.path.join(self.locking_files_dpath, lock_file_name))
+        
+        os.rmdir(self.locking_files_dpath)
 
     def __del__(self) -> None:
         # Destructor method
@@ -242,42 +320,6 @@ class RPAManager:
             self.destroy_rpa_instance(rpa_instance_id)
 
 rpa_manager = RPAManager()
-
-def sync_rpa_manager(sync_manager: SyncManager) -> None:
-    global rpa_manager
-
-    rpa_manager.rpa_instances = sync_manager.dict()
-    rpa_manager.semaphore = sync_manager.Semaphore(1)
-
-# Setters
-def set_rpa_source_directory(dir_path: str) -> None:
-    rpa.tagui_location(dir_path)
-
-def set_lock_file_directory(dir_path: str) -> None:
-    global lock_file_directory
-    lock_file_directory = dir_path
-
-def set_cloned_module_directory(dir_path: str) -> None:
-    global cloned_module_directory
-    cloned_module_directory = dir_path
-
-def set_cloned_source_directory(dir_path: str) -> None:
-    global cloned_source_directory
-    cloned_source_directory = dir_path
-
-# Removers
-def remove_lock_files() -> None:
-    if not os.path.exists(lock_file_directory):
-        return
-
-    for lock_file_name in os.listdir(lock_file_directory):
-        os.remove(os.path.join(lock_file_directory, lock_file_name))
-    
-    os.rmdir(lock_file_directory)
-
-def destroy_clones() -> None:
-    # Todo
-    pass
 
 if __name__ == "__main__":
     pass
