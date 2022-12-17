@@ -9,7 +9,7 @@ from importlib.util import spec_from_file_location, module_from_spec
 from multiprocessing import Semaphore
 from multiprocessing.managers import SyncManager
 
-lock_file_directory = os.path.join(os.path.dirname(rpa.__file__), "temp")
+lock_file_directory = os.path.join(os.getcwd(), "temp")
 cloned_module_directory = os.path.dirname(rpa.__file__)
 cloned_source_directory = None
 
@@ -152,6 +152,10 @@ class RPAManager:
     @staticmethod
     def get_lock_file_path(rpa_instance_id: int) -> str:
         return os.path.join(lock_file_directory, f"{rpa_instance_id:<2}.lock")
+    
+    @staticmethod
+    def lock_file_exists(rpa_instance_id: int) -> bool:
+        return os.path.exists(RPAManager.get_lock_file_path(rpa_instance_id))
 
     @staticmethod
     def make_lock_file(rpa_instance_id: int) -> None:
@@ -177,9 +181,16 @@ class RPAManager:
         if len(os.listdir(lock_file_directory)) == 0:
             os.remove(lock_file_directory)
 
+    def remove_orphans(self) -> None:
+        # rpa_instances without corresponding lock_files are orphaned.
+        for rpa_instance_id in list[int](self.rpa_instances.keys()):
+            if not self.lock_file_exists(rpa_instance_id):
+                self.rpa_instances.pop(rpa_instance_id)
+
     def assign_rpa_instance_id(self) -> int:
         # Assign an rpa_instance_id to the calling process
         with self.semaphore:
+            self.remove_orphans()
             rpa_instance_id = 0
 
             while rpa_instance_id in self.rpa_instances:
