@@ -161,7 +161,8 @@ class RPAManager:
         lock_file_path = RPAManager.get_lock_file_path(rpa_instance_id)
 
         if not os.path.exists(lock_file_path):
-            open(lock_file_path).close()
+            lock_file = open(lock_file_path, 'w')
+            lock_file.close()
 
     @staticmethod
     def destroy_lock_file(rpa_instance_id: int) -> None:
