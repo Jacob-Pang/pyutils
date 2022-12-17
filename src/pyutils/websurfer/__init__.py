@@ -49,15 +49,18 @@ class WebsurferBase:
         # Returns whether the element exists
         raise NotImplementedError()
 
-    def get_text(self, element_identifier: Identifier, **kwargs) -> str:
-        # Returns the text for the first match
-        raise NotImplementedError()
-
     def find_elements(self, element_identifier: Identifier, **kwargs) -> list:
         # Returns matching elements
         return etree.HTML(self.page_source()).xpath(element_identifier.as_xpath())
 
     def click_element(self, element_identifier: Identifier, **kwargs) -> None:
+        raise NotImplementedError()
+
+    def hover_over_element(self, element_identifier: Identifier, **kwargs) -> None:
+        raise NotImplementedError()
+
+    def get_text(self, element_identifier: Identifier, **kwargs) -> str:
+        # Returns the text for the first match
         raise NotImplementedError()
 
     def input_text(self, element_identifier: Identifier, text: str, send_enter_key:

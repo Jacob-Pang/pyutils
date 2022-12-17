@@ -38,9 +38,6 @@ class RPAWebSurfer (WebsurferBase):
     def exists(self, element_identifier: Identifier, **kwargs) -> str:
         return self.rpa.exist(element_identifier.as_xpath())
 
-    def get_text(self, element_identifier: Identifier) -> str:
-        return self.rpa.read(element_identifier.as_xpath())
-
     def restart(self) -> None:
         self.rpa.close()
         self.rpa.init(visual_automation=self.visual_automation, chrome_browser=self.chrome_browser,
@@ -51,6 +48,12 @@ class RPAWebSurfer (WebsurferBase):
 
     def click_element(self, element_identifier: Identifier, **kwargs) -> None:
         self.rpa.click(element_identifier.__str__())
+
+    def hover_over_element(self, element_identifier: Identifier, **kwargs) -> None:
+        self.rpa.hover(element_identifier.as_xpath())
+
+    def get_text(self, element_identifier: Identifier) -> str:
+        return self.rpa.read(element_identifier.as_xpath())
 
     def input_text(self, element_identifier: Identifier, text: str,
         send_enter_key: bool = False, **kwargs) -> None:
