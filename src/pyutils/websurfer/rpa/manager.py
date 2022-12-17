@@ -151,7 +151,7 @@ class RPAManager:
 
     @staticmethod
     def get_lock_file_path(rpa_instance_id: int) -> str:
-        return os.path.join(lock_file_directory, f"{rpa_instance_id:<2}.lock")
+        return os.path.join(lock_file_directory, f"{rpa_instance_id}.lock")
     
     @staticmethod
     def lock_file_exists(rpa_instance_id: int) -> bool:
@@ -179,7 +179,7 @@ class RPAManager:
             os.remove(lock_file_path)
         
         if len(os.listdir(lock_file_directory)) == 0:
-            os.remove(lock_file_directory)
+            os.rmdir(lock_file_directory)
 
     def remove_orphans(self) -> None:
         # rpa_instances without corresponding lock_files are orphaned.
