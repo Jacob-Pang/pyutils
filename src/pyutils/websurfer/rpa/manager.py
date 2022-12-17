@@ -193,9 +193,18 @@ class RPAManager:
             self.remove_orphans()
             rpa_instance_id = 0
 
-            while rpa_instance_id in self.rpa_instances:
-                rpa_instance_id += 1
+            while True:
+                lock_file_exists = self.lock_file_exists(rpa_instance_id)
 
+                if not (rpa_instance_id in self.rpa_instances or lock_file_exists):
+                    break
+
+                if lock_file_exists:
+                    # Instance assigned by another rpa_manager object *
+                    self.rpa_instances[rpa_instance_id] = None
+                
+                rpa_instance_id += 1
+            
             self.rpa_instances[rpa_instance_id] = None
             self.make_lock_file(rpa_instance_id)
 
@@ -214,7 +223,9 @@ class RPAManager:
     
     def destroy_rpa_instance(self, rpa_instance: rpa) -> None:
         # Closes the rpa and recycles the use of the rpa_instance
-        rpa_instance.close()
+        if rpa_instance:
+            rpa_instance.close()
+
         end_chrome_process(rpa_instance) # Purge zombie chrome processes
         set_delays(rpa_instance) # Resets settings
 
