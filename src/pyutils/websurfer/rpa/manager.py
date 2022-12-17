@@ -128,17 +128,20 @@ class RPAManager:
         with open(tagui_cmd_fpath, 'r') as file:
             tagui_cmd_prog = file.read()
 
-        for switches_config in re.findall(r"(chrome_switches=)([^\n]*)(--remote-debugging-port)", tagui_cmd_prog):
-            modified_config = switches_config
+        for prefix, config, suffix in re.findall(r"(chrome_switches=)([^\n]*)(--remote-debugging-port)",
+            tagui_cmd_prog):
+
+            origin_flags = prefix + config + suffix
+            modified_config: str = config
 
             if incognito_mode and "--incognito" not in modified_config:
-                modified_config: str = modified_config.removesuffix("--remote-debugging-port") +\
-                        " --incognito --remote-debugging-port"
+                modified_config += " --incognito "
             elif not incognito_mode and "--incognito" in modified_config:
-                modified_config: str = modified_config.replace("--incognito", '')
+                modified_config = modified_config.replace("--incognito", '')
             
-            modified_config = re.sub(r"\s+", ' ', modified_config) # Remove consecutive whitespaces
-            tagui_cmd_prog = tagui_cmd_prog.replace(switches_config, modified_config)
+            # Remove consecutive whitespaces
+            modified_flags = re.sub(r"\s+", ' ', prefix + modified_config + suffix)
+            tagui_cmd_prog = tagui_cmd_prog.replace(origin_flags, modified_flags)
 
         os.remove(tagui_cmd_fpath)
 
