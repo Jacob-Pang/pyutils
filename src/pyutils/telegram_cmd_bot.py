@@ -26,8 +26,9 @@ def make_bot_from_config(config_json: str) -> "CommandBotBase":
         config = json.load(json_file)
 
     name = config.get("name") if "name" in config else "CommandBot"
+    shortcuts = config.get("shortcuts") if "shortcuts" in config else dict()
 
-    client = TelegramClient(name, int(config.get("api_id")), config.get("api_hash"))
+    client = TelegramClient(name, int(config.get("api_id")), config.get("api_hash"), shortcuts)
     return CommandBotBase(client, config.get("bot_token"), name=name)
 
 def run_command_bot(command_bot: "CommandBotBase") -> None:
@@ -63,11 +64,13 @@ class CommandBotBase:
 
         return args_text
 
-    def __init__(self, client: TelegramClient, bot_token: str, name: str = "CommandBot"):
+    def __init__(self, client: TelegramClient, bot_token: str, name: str = "CommandBot",
+        shortcuts: dict[str, str] = dict()):
+
         self.client = client
         self.bot_token = bot_token
         self.name = name
-        self.shortcuts = dict[str, str]()
+        self.shortcuts = shortcuts
         self.request_location_futures = dict[int, asyncio.Future]()
 
         # Tracks mapping of process_alias to (process, output_chat_id)
