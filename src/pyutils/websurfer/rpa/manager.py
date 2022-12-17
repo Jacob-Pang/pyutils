@@ -211,7 +211,7 @@ class RPAManager:
             return rpa_instance_id
 
     def get_rpa_instance(self, rpa_instance_id: int = None) -> ModuleType:
-        if not rpa_instance_id:
+        if rpa_instance_id is None:
             rpa_instance_id = self.assign_rpa_instance_id()
 
         rpa_instance = get_rpa_clone(rpa_instance_id) if rpa_instance_id else rpa
@@ -221,24 +221,25 @@ class RPAManager:
         self.rpa_instances[rpa_instance_id] = rpa_instance
         return rpa_instance
     
-    def destroy_rpa_instance(self, rpa_instance: rpa) -> None:
+    def destroy_rpa_instance(self, rpa_instance_or_id: (ModuleType | int)) -> None:
         # Closes the rpa and recycles the use of the rpa_instance
+        rpa_instance, rpa_instance_id = self.rpa_instances[rpa_instance_or_id], rpa_instance_or_id \
+                if isinstance(rpa_instance_or_id, int) else \
+                rpa_instance_or_id, rpa_instance_or_id.rpa_instance_id
+
         if rpa_instance:
             rpa_instance.close()
-
-        end_chrome_process(rpa_instance) # Purge zombie chrome processes
-        set_delays(rpa_instance) # Resets settings
+            end_chrome_process(rpa_instance) # Purge zombie chrome processes
+            set_delays(rpa_instance) # Resets settings
 
         with self.semaphore:
-            rpa_instance_id: int = rpa_instance.rpa_instance_id
-
             self.rpa_instances.pop(rpa_instance_id)
             self.destroy_lock_file(rpa_instance_id)
 
     def __del__(self) -> None:
         # Destructor method
         for rpa_instance_id in list[int](self.rpa_instances.keys()):
-            self.destroy_rpa_instance(self.rpa_instances[rpa_instance_id])
+            self.destroy_rpa_instance(rpa_instance_id)
 
 rpa_manager = RPAManager()
 
