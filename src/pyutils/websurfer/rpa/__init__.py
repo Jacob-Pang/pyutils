@@ -1,3 +1,5 @@
+import rpa
+
 from .. import WebsurferBase, Identifier
 from .manager import rpa_manager
 from .manager import set_delays
@@ -9,7 +11,7 @@ class RPAWebSurfer (WebsurferBase):
         rpa_instance_id: int = None):
 
         WebsurferBase.__init__(self, headless_mode=headless_mode)
-        self.rpa = rpa_manager.get_rpa_instance(rpa_instance_id)
+        self.rpa: rpa = rpa_manager.get_rpa_instance(rpa_instance_id)
 
         set_delays(self.rpa, chrome_scan_period=chrome_scan_period, looping_delay=looping_delay,
                 sleep_period=sleep_period, engine_scan_period=engine_scan_period)
@@ -51,6 +53,9 @@ class RPAWebSurfer (WebsurferBase):
 
     def hover_over_element(self, element_identifier: Identifier, **kwargs) -> None:
         self.rpa.hover(element_identifier.as_xpath())
+
+    def select_option(self, element_identifier: Identifier, option_value: any, **kwargs) -> None:
+        self.rpa.select(element_identifier.as_xpath(), option_value)
 
     def get_text(self, element_identifier: Identifier) -> str:
         return self.rpa.read(element_identifier.as_xpath())

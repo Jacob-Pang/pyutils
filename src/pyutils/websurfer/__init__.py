@@ -59,6 +59,9 @@ class WebsurferBase:
     def hover_over_element(self, element_identifier: Identifier, **kwargs) -> None:
         raise NotImplementedError()
 
+    def select_option(self, element_identifier: Identifier, option_value: any, **kwargs) -> None:
+        raise NotImplementedError()
+
     def get_text(self, element_identifier: Identifier, **kwargs) -> str:
         # Returns the text for the first match
         raise NotImplementedError()
