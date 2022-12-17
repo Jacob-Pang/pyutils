@@ -38,61 +38,6 @@ def get_end_chrome_cmd_fpath(rpa_instance: rpa) -> str:
     return os.path.join(rpa_instance.tagui_location(), get_tagui_folder_name(),
             "src", "end_chrome.cmd")
 
-# RPAInstance methods
-def get_rpa_clone(rpa_instance_id: int) -> ModuleType:
-    rpa_clone_name = f"tagui_clone_{rpa_instance_id:0>2}"
-    tagui_py_fpath = os.path.join(os.path.dirname(rpa.__file__), f"tagui.py")
-    tagui_clone_py_fpath = os.path.join(cloned_module_directory, f"{rpa_clone_name}.py")
-
-    if not os.path.exists(tagui_clone_py_fpath):
-        with open(tagui_py_fpath, "r") as file:
-            program = file.read()
-
-        # Change temp file names to prevent conflict in read-write operations
-        program = program.replace("'rpa_python'", f"'rpa_python_{rpa_instance_id:0>2}'")
-        program = program.replace("' rpa_python '", f"' rpa_python_{rpa_instance_id:0>2} '")
-        program = program.replace("rpa_python.txt", f"rpa_python_{rpa_instance_id:0>2}.txt")
-        program = program.replace("'rpa_python.log'", f"'rpa_python_{rpa_instance_id:0>2}.log'")
-        program = program.replace("'rpa_python.js'", f"'rpa_python_{rpa_instance_id:0>2}.js'")
-        program = program.replace("'rpa_python.raw'", f"'rpa_python_{rpa_instance_id:0>2}.raw'")
-
-        # Comment out ending of existing processes
-        program = program.replace("os.system('\"' + end_processes_executable + '\"')",
-                "# os.system('\"' + end_processes_executable + '\"')")
-        
-        with open(tagui_clone_py_fpath, "w") as file:
-            file.write(program)
-
-    # Dynamically import rpa_clone module   
-    rpa_clone_spec = spec_from_file_location(rpa_clone_name, tagui_clone_py_fpath)
-    rpa_clone = module_from_spec(rpa_clone_spec)
-    sys.modules[rpa_clone_name] = rpa_clone
-    rpa_clone_spec.loader.exec_module(rpa_clone)
-
-    tagui_clone_dpath = os.path.join(cloned_source_directory if cloned_source_directory else
-            rpa.tagui_location(), rpa_clone_name)
-    
-    rpa_clone.tagui_location(tagui_clone_dpath)
-    
-    if not os.path.exists(tagui_clone_dpath):
-        os.mkdir(tagui_clone_dpath)
-        rpa_clone.setup()
-        tagui_cmd_fpath = get_tagui_cmd_fpath(rpa_clone)
-
-        with open(tagui_cmd_fpath, "r") as file:
-            program = file.read()
-
-        # Change debugging port number
-        program = program.replace("9222", get_remote_debugging_port(rpa_instance_id))
-
-        os.remove(tagui_cmd_fpath)
-
-        with open(tagui_cmd_fpath, "w") as file:
-            file.write(program)
-
-    setattr(rpa_clone, "tagui_dpath", tagui_clone_dpath)
-    return rpa_clone
-
 def end_chrome_process(rpa_instance: rpa) -> None:
     end_chrome_cmd_fpath = get_end_chrome_cmd_fpath(rpa_instance)
 
@@ -111,6 +56,8 @@ def end_chrome_process(rpa_instance: rpa) -> None:
     os.system('"' + end_chrome_cmd_fpath + '"')
 
 class RPAManager:
+    _cloned_source_dpath = None
+
     @staticmethod
     def set_rpa_source_dpath(dpath: str) -> None:
         rpa.tagui_location(dpath)
@@ -204,11 +151,22 @@ class RPAManager:
 
         self.rpa_instances = rpa_instance_map
         self.semaphore = Semaphore(1)
-
+        
         self.locking_files_dpath = locking_files_dpath
         self.cloned_module_dpath = cloned_module_dpath
         self.cloned_source_dpath = cloned_source_dpath
     
+    @property
+    def cloned_source_dpath(self) -> str:
+        if self._cloned_source_dpath:
+            return self._cloned_source_dpath
+        
+        return rpa.tagui_location()
+
+    @cloned_source_dpath.setter
+    def cloned_source_dpath(self, dpath: str) -> None:
+        self._cloned_source_dpath = dpath
+
     # Setters
     def sync(self, sync_manager: SyncManager) -> None:
         self.rpa_instances = sync_manager.dict()
@@ -272,11 +230,63 @@ class RPAManager:
 
             return rpa_instance_id
 
+    def get_rpa_clone(self, rpa_instance_id: int) -> ModuleType:
+        rpa_clone_name = f"tagui_clone_{rpa_instance_id:0>2}"
+        tagui_py_fpath = os.path.join(os.path.dirname(rpa.__file__), f"tagui.py")
+        tagui_clone_py_fpath = os.path.join(self.cloned_module_dpath, f"{rpa_clone_name}.py")
+
+        if not os.path.exists(tagui_clone_py_fpath):
+            with open(tagui_py_fpath, "r") as file:
+                program = file.read()
+
+            # Change temp file names to prevent conflict in read-write operations
+            program = program.replace("'rpa_python'", f"'rpa_python_{rpa_instance_id:0>2}'")
+            program = program.replace("' rpa_python '", f"' rpa_python_{rpa_instance_id:0>2} '")
+            program = program.replace("rpa_python.txt", f"rpa_python_{rpa_instance_id:0>2}.txt")
+            program = program.replace("'rpa_python.log'", f"'rpa_python_{rpa_instance_id:0>2}.log'")
+            program = program.replace("'rpa_python.js'", f"'rpa_python_{rpa_instance_id:0>2}.js'")
+            program = program.replace("'rpa_python.raw'", f"'rpa_python_{rpa_instance_id:0>2}.raw'")
+
+            # Comment out ending of existing processes
+            program = program.replace("os.system('\"' + end_processes_executable + '\"')",
+                    "# os.system('\"' + end_processes_executable + '\"')")
+            
+            with open(tagui_clone_py_fpath, "w") as file:
+                file.write(program)
+
+        # Dynamically import rpa_clone module   
+        rpa_clone_spec = spec_from_file_location(rpa_clone_name, tagui_clone_py_fpath)
+        rpa_clone = module_from_spec(rpa_clone_spec)
+        sys.modules[rpa_clone_name] = rpa_clone
+        rpa_clone_spec.loader.exec_module(rpa_clone)
+
+        tagui_clone_dpath = os.path.join(self.cloned_source_dpath, rpa_clone_name)
+        rpa_clone.tagui_location(tagui_clone_dpath)
+        
+        if not os.path.exists(tagui_clone_dpath):
+            os.mkdir(tagui_clone_dpath)
+            rpa_clone.setup()
+            tagui_cmd_fpath = get_tagui_cmd_fpath(rpa_clone)
+
+            with open(tagui_cmd_fpath, "r") as file:
+                program = file.read()
+
+            # Change debugging port number
+            program = program.replace("9222", get_remote_debugging_port(rpa_instance_id))
+
+            os.remove(tagui_cmd_fpath)
+
+            with open(tagui_cmd_fpath, "w") as file:
+                file.write(program)
+
+        setattr(rpa_clone, "tagui_dpath", tagui_clone_dpath)
+        return rpa_clone
+
     def get_rpa_instance(self, rpa_instance_id: int = None) -> ModuleType:
         if rpa_instance_id is None:
             rpa_instance_id = self.assign_rpa_instance_id()
 
-        rpa_instance = get_rpa_clone(rpa_instance_id) if rpa_instance_id else rpa
+        rpa_instance = self.get_rpa_clone(rpa_instance_id) if rpa_instance_id else rpa
         setattr(rpa_instance, "rpa_instance_id", rpa_instance_id)
 
         # Generates entry if entry does not exist
