@@ -7,8 +7,9 @@ from .manager import rpa_manager
 class RPAWebSurfer (WebsurferBase):
     def __init__(self, visual_automation: bool = False, chrome_browser: bool = True,
         headless_mode: bool = False, turbo_mode: bool = False, rpa_manager: RPAManager = rpa_manager,
-        rpa_instance_id: int = None, chrome_scan_period: int = 100000, looping_delay: bool = True,
-        sleep_period: int = 500, engine_scan_period: int = .5, incognito_mode: bool = False):
+        rpa_instance_id: int = None, chrome_scan_period: int = rpa_manager._chrome_scan_period_def,
+        sleeping_period: int = rpa_manager._sleeping_period_def, engine_scan_period: int =
+        rpa_manager._engine_scan_period_def, incognito_mode: bool = False):
 
         WebsurferBase.__init__(self, headless_mode=headless_mode)
         self.rpa_manager = rpa_manager
@@ -16,8 +17,7 @@ class RPAWebSurfer (WebsurferBase):
 
         # Setting RPA config
         self.rpa_manager.set_delay_config(self.rpa, chrome_scan_period=chrome_scan_period,
-                use_looping_delay=looping_delay, sleeping_period=sleep_period,
-                engine_scan_period=engine_scan_period)
+                sleeping_period=sleeping_period, engine_scan_period=engine_scan_period)
 
         self.rpa_manager.set_flags(self.rpa, incognito_mode=incognito_mode)
 

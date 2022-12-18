@@ -1,12 +1,12 @@
+
 @echo off
 rem Adapted from TAGUI end_processes.cmd
+set source_dpath=%1
+set port=%2
 
-set source_dpath = %1
-set port = %2
+cd %source_dpath%
 
-chdir %source_dpath%
-
-if exist "%~dp0unx\gawk.exe" set "path=%~dp0unx;%path%"
+if exist "%source_dpath%\unx\gawk.exe" set "path=%source_dpath%\unx;%path%"
 
 :repeat_kill_chrome
 for /f "tokens=* usebackq" %%p in (`wmic process where "caption like '%%chrome.exe%%' and commandline like '%%tagui_user_profile_ --remote-debugging-port=%port%%%'" get processid 2^>nul ^| cut -d" " -f 1 ^| sort -nur ^| head -n 1`) do set chrome_process_id=%%p

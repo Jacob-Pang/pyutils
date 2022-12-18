@@ -40,16 +40,16 @@ def kill_chrome_processes(rpa_instance: rpa) -> None:
 
     if not os.path.exists(kill_chrome_cmd_dpath):
         with open(kill_chrome_cmd_dpath, 'w') as file:
-            file.write(
-r"""@echo off
+            file.write( # Generate kill_chrome_processes.cmd file
+r"""
+@echo off
 rem Adapted from TAGUI end_processes.cmd
+set source_dpath=%1
+set port=%2
 
-set source_dpath = %1
-set port = %2
+cd %source_dpath%
 
-chdir %source_dpath%
-
-if exist "%~dp0unx\gawk.exe" set "path=%~dp0unx;%path%"
+if exist "%source_dpath%\unx\gawk.exe" set "path=%source_dpath%\unx;%path%"
 
 :repeat_kill_chrome
 for /f "tokens=* usebackq" %%p in (`wmic process where "caption like '%%chrome.exe%%' and commandline like '%%tagui_user_profile_ --remote-debugging-port=%port%%%'" get processid 2^>nul ^| cut -d" " -f 1 ^| sort -nur ^| head -n 1`) do set chrome_process_id=%%p
@@ -63,17 +63,17 @@ for /f "tokens=* usebackq" %%p in (`wmic process where "caption like '%%chrome.e
 if not "%chrome_process_id%"=="" (
     taskkill /PID %chrome_process_id% /T /F > nul 2>&1
     goto repeat_kill_chrome
-)"""
+)
+"""
             )
 
-    os.system('"' + kill_chrome_cmd_dpath + '" "' + tagui_source_dpath + 
+    os.system(f'{kill_chrome_cmd_dpath} "' + tagui_source_dpath + 
             f'" {get_remote_debugging_port(rpa_instance.rpa_instance_id)}')
 
 class RPAManager:
     _cloned_source_dpath = None
     _chrome_scan_period_def = 100000
-    _use_looping_delay_def = True,
-    _sleeping_period_def = 500,
+    _sleeping_period_def = 500
     _engine_scan_period_def = .5
 
     @staticmethod
@@ -82,8 +82,7 @@ class RPAManager:
 
     @staticmethod
     def set_delay_config(rpa_instance: rpa, chrome_scan_period: int = _chrome_scan_period_def,
-        use_looping_delay: bool = _use_looping_delay_def, sleeping_period: int = _sleeping_period_def,
-        engine_scan_period: int = _engine_scan_period_def) -> None:
+        sleeping_period: int = _sleeping_period_def, engine_scan_period: int = _engine_scan_period_def) -> None:
         """
         Sources:
             https://github.com/tebelorg/RPA-Python/issues/120
@@ -105,28 +104,25 @@ class RPAManager:
             rpa_instance.chrome_scan_period = chrome_scan_period
 
         # Changing tagui_header.js
-        if use_looping_delay != rpa_instance.use_looping_delay or sleeping_period \
-            != rpa_instance.sleeping_period:
-
+        if sleeping_period != rpa_instance.sleeping_period:
             tagui_header_fpath = get_tagui_header_fpath(rpa_instance)
             if not os.path.exists(tagui_header_fpath): rpa_instance.setup()
 
             with open(tagui_header_fpath, "r") as file:
                 program = file.read()
 
-            program = re.sub("function sleep\(ms\) .*\n",
-                "function sleep(ms) { // helper to add delay during loops\n" if use_looping_delay else
-                "function sleep(ms) { return; // helper to add delay during loops\n",
-                program
-            )
+            # Cannot set sleeping_period = 100
+            if sleeping_period == 100:
+                sleeping_period = 99
+            
+            program = program.replace(f"sleep({rpa_instance.sleeping_period})",
+                    f"sleep({sleeping_period})")
 
-            program = re.sub("sleep\(\d+\)", f"sleep({sleeping_period})", program)
             os.remove(tagui_header_fpath)
 
             with open(tagui_header_fpath, "w") as file:
                 file.write(program)
-            
-            rpa_instance.use_looping_delay = use_looping_delay
+
             rpa_instance.sleeping_period = sleeping_period
 
         # Changing tagui.sikuli/tagui.py
@@ -326,7 +322,6 @@ class RPAManager:
         # Setting ID and config
         setattr(rpa_instance, "rpa_instance_id", rpa_instance_id)
         setattr(rpa_instance, "chrome_scan_period", self._chrome_scan_period_def)
-        setattr(rpa_instance, "use_looping_delay", self._use_looping_delay_def)
         setattr(rpa_instance, "sleeping_period", self._sleeping_period_def)
         setattr(rpa_instance, "engine_scan_period", self._engine_scan_period_def)
         setattr(rpa_instance, "incognito_mode", False)
