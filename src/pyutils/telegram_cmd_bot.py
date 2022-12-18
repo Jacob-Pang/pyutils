@@ -28,8 +28,8 @@ def make_bot_from_config(config_json: str) -> "CommandBotBase":
     name = config.get("name") if "name" in config else "CommandBot"
     shortcuts = config.get("shortcuts") if "shortcuts" in config else dict()
 
-    client = TelegramClient(name, int(config.get("api_id")), config.get("api_hash"), shortcuts)
-    return CommandBotBase(client, config.get("bot_token"), name=name)
+    client = TelegramClient(name, int(config.get("api_id")), config.get("api_hash"))
+    return CommandBotBase(client, config.get("bot_token"), name=name, shortcuts=shortcuts)
 
 def run_command_bot(command_bot: "CommandBotBase") -> None:
     @command_bot.client.on(events.NewMessage(pattern="/(?i)"))
