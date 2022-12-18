@@ -37,8 +37,35 @@ def get_tagui_sikuli_fpath(rpa_instance: rpa) -> str:
 def kill_chrome_processes(rpa_instance: rpa) -> None:
     tagui_source_dpath = os.path.join(rpa_instance.tagui_location(), get_tagui_folder_name(), "src")
     kill_chrome_cmd_dpath = os.path.join(os.path.dirname(__file__), "kill_chrome_processes.cmd")
-    print('"' + kill_chrome_cmd_dpath + '" "' + tagui_source_dpath + 
-            f'" {get_remote_debugging_port(rpa_instance.rpa_instance_id)}')
+
+    if not os.path.exists(kill_chrome_cmd_dpath):
+        with open(kill_chrome_cmd_dpath, 'w') as file:
+            file.write(
+r"""@echo off
+rem Adapted from TAGUI end_processes.cmd
+
+set source_dpath = %1
+set port = %2
+
+chdir %source_dpath%
+
+if exist "%~dp0unx\gawk.exe" set "path=%~dp0unx;%path%"
+
+:repeat_kill_chrome
+for /f "tokens=* usebackq" %%p in (`wmic process where "caption like '%%chrome.exe%%' and commandline like '%%tagui_user_profile_ --remote-debugging-port=%port%%%'" get processid 2^>nul ^| cut -d" " -f 1 ^| sort -nur ^| head -n 1`) do set chrome_process_id=%%p
+if not "%chrome_process_id%"=="" (
+    taskkill /PID %chrome_process_id% /T /F > nul 2>&1
+    goto repeat_kill_chrome
+)
+
+:repeat_kill_incognito_chrome
+for /f "tokens=* usebackq" %%p in (`wmic process where "caption like '%%chrome.exe%%' and commandline like '%%tagui_user_profile_ --incognito --remote-debugging-port=%port%%%'" get processid 2^>nul ^| cut -d" " -f 1 ^| sort -nur ^| head -n 1`) do set chrome_process_id=%%p
+if not "%chrome_process_id%"=="" (
+    taskkill /PID %chrome_process_id% /T /F > nul 2>&1
+    goto repeat_kill_chrome
+)"""
+            )
+
     os.system('"' + kill_chrome_cmd_dpath + '" "' + tagui_source_dpath + 
             f'" {get_remote_debugging_port(rpa_instance.rpa_instance_id)}')
 
