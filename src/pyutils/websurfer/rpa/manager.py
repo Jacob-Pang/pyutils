@@ -34,26 +34,11 @@ def get_tagui_sikuli_fpath(rpa_instance: rpa) -> str:
     return os.path.join(rpa_instance.tagui_location(), get_tagui_folder_name(),
             "src", "tagui.sikuli", "tagui.py")
 
-def get_end_chrome_cmd_fpath(rpa_instance: rpa) -> str:
-    return os.path.join(rpa_instance.tagui_location(), get_tagui_folder_name(),
-            "src", "end_chrome.cmd")
-
-def end_chrome_process(rpa_instance: rpa) -> None:
-    end_chrome_cmd_fpath = get_end_chrome_cmd_fpath(rpa_instance)
-
-    if not os.path.exists(end_chrome_cmd_fpath):
-        # Generate end_chrome command file
-        template_fpath = os.path.join(os.path.dirname(__file__), "end_chrome_template.cmd")
-
-        with open(template_fpath, "r") as file:
-            program = file.read()
-
-        program = program.replace("9222", get_remote_debugging_port(rpa_instance.rpa_instance_id))
-
-        with open(end_chrome_cmd_fpath, "w") as file:
-            file.write(program)
-    
-    os.system('"' + end_chrome_cmd_fpath + '"')
+def kill_chrome_processes(rpa_instance: rpa) -> None:
+    tagui_source_dpath = os.path.join(rpa_instance.tagui_location(), get_tagui_folder_name(), "src")
+    kill_chrome_cmd_dpath = os.path.join(os.path.dirname(__file__), "kill_chrome_processes.cmd")
+    os.system('"' + kill_chrome_cmd_dpath + '" "' + tagui_source_dpath + 
+            f'" {get_remote_debugging_port(rpa_instance)}')
 
 class RPAManager:
     _cloned_source_dpath = None
@@ -329,7 +314,7 @@ class RPAManager:
 
         if rpa_instance: # Purge zombie processes
             rpa_instance.close()
-            end_chrome_process(rpa_instance)
+            kill_chrome_processes(rpa_instance)
 
             # Resets settings
             self.set_delay_config(rpa_instance)
