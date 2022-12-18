@@ -37,6 +37,8 @@ def get_tagui_sikuli_fpath(rpa_instance: rpa) -> str:
 def kill_chrome_processes(rpa_instance: rpa) -> None:
     tagui_source_dpath = os.path.join(rpa_instance.tagui_location(), get_tagui_folder_name(), "src")
     kill_chrome_cmd_dpath = os.path.join(os.path.dirname(__file__), "kill_chrome_processes.cmd")
+    print('"' + kill_chrome_cmd_dpath + '" "' + tagui_source_dpath + 
+            f'" {get_remote_debugging_port(rpa_instance.rpa_instance_id)}')
     os.system('"' + kill_chrome_cmd_dpath + '" "' + tagui_source_dpath + 
             f'" {get_remote_debugging_port(rpa_instance.rpa_instance_id)}')
 
