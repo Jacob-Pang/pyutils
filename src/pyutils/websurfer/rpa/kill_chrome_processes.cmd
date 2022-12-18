@@ -4,7 +4,7 @@ rem Adapted from TAGUI end_processes.cmd
 set source_dpath=%1
 set port=%2
 
-cd %source_dpath%
+cd /d %source_dpath%
 
 if exist "%source_dpath%\unx\gawk.exe" set "path=%source_dpath%\unx;%path%"
 
