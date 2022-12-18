@@ -57,61 +57,79 @@ def end_chrome_process(rpa_instance: rpa) -> None:
 
 class RPAManager:
     _cloned_source_dpath = None
+    _chrome_scan_period_def = 100000
+    _use_looping_delay_def = True,
+    _sleeping_period_def = 500,
+    _engine_scan_period_def = .5
 
     @staticmethod
     def set_rpa_source_dpath(dpath: str) -> None:
         rpa.tagui_location(dpath)
 
     @staticmethod
-    def set_delay_config(rpa_instance: rpa, chrome_scan_period: int = 100000, looping_delay: bool = True,
-        sleep_period: int = 500, engine_scan_period: int = .5) -> None:
+    def set_delay_config(rpa_instance: rpa, chrome_scan_period: int = _chrome_scan_period_def,
+        use_looping_delay: bool = _use_looping_delay_def, sleeping_period: int = _sleeping_period_def,
+        engine_scan_period: int = _engine_scan_period_def) -> None:
         """
         Sources:
             https://github.com/tebelorg/RPA-Python/issues/120
         """
-        tagui_chrome_fpath = get_tagui_chrome_fpath(rpa_instance)
-        tagui_header_fpath = get_tagui_header_fpath(rpa_instance)
-        tagui_sikuli_fpath = get_tagui_sikuli_fpath(rpa_instance)
+        # Changing tagui_chrome.php
+        if chrome_scan_period != rpa_instance.chrome_scan_period:
+            tagui_chrome_fpath = get_tagui_chrome_fpath(rpa_instance)
+            if not os.path.exists(tagui_chrome_fpath): rpa_instance.setup()
 
-        if not os.path.exists(tagui_chrome_fpath):
-            # Not setup: missing binaries
-            rpa_instance.setup()
+            with open(tagui_chrome_fpath, "r") as file:
+                program = file.read()
 
-        # modify tagui_chrome.php
-        with open(tagui_chrome_fpath, "r") as file:
-            program = file.read()
+            program = re.sub("scan_period = \d+;", f"scan_period = {chrome_scan_period};", program)
+            os.remove(tagui_chrome_fpath)
 
-        program = re.sub("scan_period = \d+;", f"scan_period = {chrome_scan_period};", program)
-        os.remove(tagui_chrome_fpath)
+            with open(tagui_chrome_fpath, "w") as file:
+                file.write(program)
 
-        with open(tagui_chrome_fpath, "w") as file:
-            file.write(program)
+            rpa_instance.chrome_scan_period = chrome_scan_period
 
-        # modify tagui_header.js
-        with open(tagui_header_fpath, "r") as file:
-            program = file.read()
+        # Changing tagui_header.js
+        if use_looping_delay != rpa_instance.use_looping_delay or sleeping_period \
+            != rpa_instance.sleeping_period:
 
-        program = re.sub("function sleep\(ms\) .*\n",
-            "function sleep(ms) { // helper to add delay during loops\n" if looping_delay else
-            "function sleep(ms) { return; // helper to add delay during loops\n",
-            program
-        )
+            tagui_header_fpath = get_tagui_header_fpath(rpa_instance)
+            if not os.path.exists(tagui_header_fpath): rpa_instance.setup()
 
-        program = re.sub("sleep\(\d+\)", f"sleep({sleep_period})", program)
-        os.remove(tagui_header_fpath)
+            with open(tagui_header_fpath, "r") as file:
+                program = file.read()
 
-        with open(tagui_header_fpath, "w") as file:
-            file.write(program)
+            program = re.sub("function sleep\(ms\) .*\n",
+                "function sleep(ms) { // helper to add delay during loops\n" if use_looping_delay else
+                "function sleep(ms) { return; // helper to add delay during loops\n",
+                program
+            )
 
-        # modify tagui.sikuli/tagui.py
-        with open(tagui_sikuli_fpath, "r") as file:
-            program = file.read()
+            program = re.sub("sleep\(\d+\)", f"sleep({sleeping_period})", program)
+            os.remove(tagui_header_fpath)
 
-        program = re.sub("scan_period = \d+", f"scan_period = {engine_scan_period}", program)
-        os.remove(tagui_sikuli_fpath)
+            with open(tagui_header_fpath, "w") as file:
+                file.write(program)
+            
+            rpa_instance.use_looping_delay = use_looping_delay
+            rpa_instance.sleeping_period = sleeping_period
 
-        with open(tagui_sikuli_fpath, "w") as file:
-            file.write(program)
+        # Changing tagui.sikuli/tagui.py
+        if engine_scan_period != rpa_instance.engine_scan_period:
+            tagui_sikuli_fpath = get_tagui_sikuli_fpath(rpa_instance)
+            if not os.path.exists(tagui_sikuli_fpath): rpa_instance.setup()
+
+            with open(tagui_sikuli_fpath, "r") as file:
+                program = file.read()
+
+            program = re.sub("scan_period = \d+", f"scan_period = {engine_scan_period}", program)
+            os.remove(tagui_sikuli_fpath)
+
+            with open(tagui_sikuli_fpath, "w") as file:
+                file.write(program)
+
+            rpa_instance.engine_scan_period = engine_scan_period
 
     @staticmethod
     def set_flags(rpa_instance: rpa, incognito_mode: bool = False) -> None:
@@ -119,34 +137,34 @@ class RPAManager:
         Sources:
             https://github.com/tebelorg/RPA-Python/issues/123
         """
-        tagui_cmd_fpath = get_tagui_cmd_fpath(rpa_instance)
+        if incognito_mode != rpa_instance.incognito_mode:
+            tagui_cmd_fpath = get_tagui_cmd_fpath(rpa_instance)
+            if not os.path.exists(tagui_cmd_fpath): rpa_instance.setup()
 
-        if not os.path.exists(tagui_cmd_fpath):
-            # Not setup: missing binaries
-            rpa_instance.setup()
+            with open(tagui_cmd_fpath, 'r') as file:
+                tagui_cmd_prog = file.read()
 
-        with open(tagui_cmd_fpath, 'r') as file:
-            tagui_cmd_prog = file.read()
+            for prefix, config, suffix in re.findall(r"(chrome_switches=)([^\n]*)(--remote-debugging-port)",
+                tagui_cmd_prog):
 
-        for prefix, config, suffix in re.findall(r"(chrome_switches=)([^\n]*)(--remote-debugging-port)",
-            tagui_cmd_prog):
+                origin_flags = prefix + config + suffix
+                modified_config: str = config
 
-            origin_flags = prefix + config + suffix
-            modified_config: str = config
+                if incognito_mode and "--incognito" not in modified_config:
+                    modified_config += " --incognito "
+                elif not incognito_mode and "--incognito" in modified_config:
+                    modified_config = modified_config.replace("--incognito", '')
+                
+                # Remove consecutive whitespaces
+                modified_flags = re.sub(r"\s+", ' ', prefix + modified_config + suffix)
+                tagui_cmd_prog = tagui_cmd_prog.replace(origin_flags, modified_flags)
 
-            if incognito_mode and "--incognito" not in modified_config:
-                modified_config += " --incognito "
-            elif not incognito_mode and "--incognito" in modified_config:
-                modified_config = modified_config.replace("--incognito", '')
-            
-            # Remove consecutive whitespaces
-            modified_flags = re.sub(r"\s+", ' ', prefix + modified_config + suffix)
-            tagui_cmd_prog = tagui_cmd_prog.replace(origin_flags, modified_flags)
+            os.remove(tagui_cmd_fpath)
 
-        os.remove(tagui_cmd_fpath)
+            with open(tagui_cmd_fpath, 'w') as file:
+                file.write(tagui_cmd_prog)
 
-        with open(tagui_cmd_fpath, 'w') as file:
-            file.write(tagui_cmd_prog)
+            rpa_instance.incognito_mode = incognito_mode
 
     def __init__(self, rpa_instance_map: dict[int, ModuleType] = dict(),
         locking_files_dpath: str = os.path.join(os.path.dirname(rpa.__file__), "rpa_manager_temp_files"),
@@ -290,7 +308,14 @@ class RPAManager:
             rpa_instance_id = self.assign_rpa_instance_id()
 
         rpa_instance = self.get_rpa_clone(rpa_instance_id) if rpa_instance_id else rpa
+
+        # Setting ID and config
         setattr(rpa_instance, "rpa_instance_id", rpa_instance_id)
+        setattr(rpa_instance, "chrome_scan_period", self._chrome_scan_period_def)
+        setattr(rpa_instance, "use_looping_delay", self._use_looping_delay_def)
+        setattr(rpa_instance, "sleeping_period", self._sleeping_period_def)
+        setattr(rpa_instance, "engine_scan_period", self._engine_scan_period_def)
+        setattr(rpa_instance, "incognito_mode", False)
 
         # Generates entry if entry does not exist
         self.rpa_instances[rpa_instance_id] = rpa_instance

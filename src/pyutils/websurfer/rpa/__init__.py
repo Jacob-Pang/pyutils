@@ -16,7 +16,7 @@ class RPAWebSurfer (WebsurferBase):
 
         # Setting RPA config
         self.rpa_manager.set_delay_config(self.rpa, chrome_scan_period=chrome_scan_period,
-                looping_delay=looping_delay, sleep_period=sleep_period,
+                use_looping_delay=looping_delay, sleeping_period=sleep_period,
                 engine_scan_period=engine_scan_period)
 
         self.rpa_manager.set_flags(self.rpa, incognito_mode=incognito_mode)
