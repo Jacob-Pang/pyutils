@@ -73,8 +73,8 @@ class CommandBotBase:
         self.shortcuts = shortcuts
         self.request_location_futures = dict[int, asyncio.Future]()
 
-        # Tracks mapping of process_alias to (process, output_chat_id)
-        self.processes = dict[str, tuple[Popen, int]]()
+        # Tracks mapping of process_alias to (process, output_bot_token, output_chat_id)
+        self.processes = dict[str, tuple[Popen, str, int]]()
 
         # Tracks mapping of sender_id to process_alias of active (tracked) processes
         self.active_processes = defaultdict(list[str])
@@ -85,33 +85,39 @@ class CommandBotBase:
 
     # Process managers
     def pipe_process_outputs(self, process_alias: str, edit_message: events.NewMessage = None):
-        process, output_chat_id = self.processes[process_alias]
+        process, output_bot_token, output_chat_id = self.processes[process_alias]
 
         for output in process.stdout:
             try:    output = output.decode('utf-8')
             except: output = f"(undecoded) {output}"
 
             output = output.replace('\r', '\n')
-            send_telegram_message(self.bot_token, output_chat_id, f"<b>Process [{process_alias}]</b>:\n{output}")
+            send_telegram_message(
+                output_bot_token, output_chat_id,
+                f"<b>Process [{process_alias}]</b>:\n{output}"
+            )
 
         process.wait()
         self.kill_process(process_alias) # Does not invoke Popen.terminate
     
     def pipe_process_errors(self, process_alias: str):
-        process, output_chat_id = self.processes[process_alias]
+        process, output_bot_token, output_chat_id = self.processes[process_alias]
 
         for output in process.stderr:
             try:    output = output.decode('utf-8')
             except: output = f"(undecoded) {output}"
 
             output = output.replace('\r', '\n')
-            send_telegram_message(self.bot_token, output_chat_id, f"<b>Process [{process_alias}] Error</b>:\n{output}")
+            send_telegram_message(
+                output_bot_token, output_chat_id,
+                f"<b>Process [{process_alias}] Error</b>:\n{output}"
+            )
 
     def kill_process(self, process_alias: str):
         if process_alias not in self.processes:
             return
 
-        process, output_chat_id = self.processes[process_alias]
+        process, output_bot_token, output_chat_id = self.processes[process_alias]
         status = process.poll()
 
         if status is None: # Busy process
@@ -125,7 +131,7 @@ class CommandBotBase:
                 self.active_processes[user].remove(process_alias)
 
         send_telegram_message(
-            self.bot_token, output_chat_id,
+            output_bot_token, output_chat_id,
             f"<b>Process [{process_alias}]</b> closed."
         )
 
@@ -182,20 +188,26 @@ class CommandBotBase:
     async def execute(self, event: events.NewMessage.Event, args_text: str) -> None:
         chat = await event.get_chat()
         sender = await event.get_sender()
-
-        chat_id = chat.id
         sender_id = sender.id
 
         # Parse /execute flags
-        flags = { "-alias": None, "-cwd": os.getcwd() }
+        flags = {
+            "-alias": None,
+            "-output_bot_token": self.bot_token,
+            "-output_chat_id": chat.id,
+            "-cwd": os.getcwd()
+        }
+
         args_text = self.parse_process_flags(flags, args_text)
         args_text = self.flush_py_cmd(args_text)
 
         process = Popen(args_text, stdin=PIPE, stdout=PIPE, stderr=PIPE, cwd=flags.get("-cwd"))
         process_alias = flags.get("-alias") if flags.get("-alias") else str(process.pid)
-        self.processes[process_alias] = (process, chat_id)
+        self.processes[process_alias] = (process, flags["output_bot_token"],
+                flags["output_chat_id"])
 
-        await self.echo(event, f"<b>Process [{process_alias}]</b> started and active.", sender_id=sender_id)
+        await self.echo(event, f"<b>Process [{process_alias}]</b> started and active.",
+                sender_id=sender_id)
 
         Thread(target=self.pipe_process_errors, args=(process_alias,)).start()
         Thread(target=self.pipe_process_outputs, args=(process_alias,)).start()
@@ -245,7 +257,7 @@ class CommandBotBase:
         else:
             pipe_input = self.flush_py_cmd(pipe_input)
             process_alias = self.active_processes[sender_id][-1]
-            process, _ = self.processes[process_alias]
+            process, _, _ = self.processes[process_alias]
             process.stdin.write(f"{pipe_input}\r\n".encode("utf-8"))
             process.stdin.flush()
 

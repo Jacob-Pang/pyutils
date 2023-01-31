@@ -49,7 +49,7 @@ class WebsurferBase:
         # Returns whether the element exists
         raise NotImplementedError()
 
-    def find_elements(self, element_identifier: Identifier, **kwargs) -> list:
+    def find_elements(self, element_identifier: Identifier, **kwargs) -> list[etree._ElementTree]:
         # Returns matching elements
         return etree.HTML(self.page_source()).xpath(element_identifier.as_xpath())
 
