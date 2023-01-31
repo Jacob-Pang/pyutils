@@ -1,13 +1,13 @@
 from selenium.webdriver.common.by import By
 from .webdriver import WebdriverBase
 from .chrome import ChromeWebdriver
-from .. import WebsurferBase
+from .. import WebSurferBase
 from .. import CssSelectorIdentifier, Identifier, XPathIdentifier
 
-class SeleniumWebSurfer (WebsurferBase):
+class SeleniumWebSurfer (WebSurferBase):
     def __init__(self, headless_mode: bool = False, webdriver: WebdriverBase = ChromeWebdriver,
         *option_args, preferences: dict = None):
-        WebsurferBase.__init__(self, headless_mode=headless_mode)
+        WebSurferBase.__init__(self, headless_mode=headless_mode)
         self.webdriver = webdriver("--headless", *option_args, preferences=preferences) \
                 if headless_mode else webdriver(*option_args, preferences=preferences)
 

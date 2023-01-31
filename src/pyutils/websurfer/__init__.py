@@ -28,7 +28,7 @@ class CssSelectorIdentifier (Identifier):
     def as_css(self) -> str:
         return self.__str__()
 
-class WebsurferBase:
+class WebSurferBase:
     def __init__(self, headless_mode: bool = False) -> None:
         self.headless_mode = headless_mode
 
@@ -78,7 +78,7 @@ class WebsurferBase:
 
 class PageRenderedPredicate:
     # Checks whether there were changes to the webpage source.
-    def __init__(self, websurfer: WebsurferBase):
+    def __init__(self, websurfer: WebSurferBase):
         self.websurfer = websurfer
         self.page_source = self.websurfer.page_source()
     

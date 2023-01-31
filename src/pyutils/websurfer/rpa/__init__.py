@@ -1,17 +1,17 @@
 import rpa
 
-from .. import WebsurferBase, Identifier
+from .. import WebSurferBase, Identifier
 from .manager import RPAManager
 from .manager import rpa_manager
 
-class RPAWebSurfer (WebsurferBase):
+class RPAWebSurfer (WebSurferBase):
     def __init__(self, visual_automation: bool = False, chrome_browser: bool = True,
         headless_mode: bool = False, turbo_mode: bool = False, rpa_manager: RPAManager = rpa_manager,
         rpa_instance_id: int = None, chrome_scan_period: int = rpa_manager._chrome_scan_period_def,
         sleeping_period: int = rpa_manager._sleeping_period_def, engine_scan_period: int =
         rpa_manager._engine_scan_period_def, incognito_mode: bool = False):
 
-        WebsurferBase.__init__(self, headless_mode=headless_mode)
+        WebSurferBase.__init__(self, headless_mode=headless_mode)
         self.rpa_manager = rpa_manager
         self.rpa: rpa = self.rpa_manager.get_rpa_instance(rpa_instance_id)
 
