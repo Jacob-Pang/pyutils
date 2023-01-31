@@ -203,8 +203,8 @@ class CommandBotBase:
 
         process = Popen(args_text, stdin=PIPE, stdout=PIPE, stderr=PIPE, cwd=flags.get("-cwd"))
         process_alias = flags.get("-alias") if flags.get("-alias") else str(process.pid)
-        self.processes[process_alias] = (process, flags["output_bot_token"],
-                flags["output_chat_id"])
+        self.processes[process_alias] = (process, flags["-output_bot_token"],
+                flags["-output_chat_id"])
 
         await self.echo(event, f"<b>Process [{process_alias}]</b> started and active.",
                 sender_id=sender_id)
