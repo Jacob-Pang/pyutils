@@ -23,13 +23,15 @@ def send_telegram_message(bot_token: str, chat_id: str, message: str) -> None:
 
 def make_bot_from_config(config_json: str) -> "CommandBotBase":
     with open(config_json) as json_file:
-        config = json.load(json_file)
+        config: dict = json.load(json_file)
 
     name = config.get("name") if "name" in config else "CommandBot"
     shortcuts = config.get("shortcuts") if "shortcuts" in config else dict()
+    keywords = config.get("keywords") if "keywords" in config else dict()
 
     client = TelegramClient(name, int(config.get("api_id")), config.get("api_hash"))
-    return CommandBotBase(client, config.get("bot_token"), name=name, shortcuts=shortcuts)
+    return CommandBotBase(client, config.get("bot_token"), name=name, shortcuts=shortcuts,
+            keywords=keywords)
 
 def run_command_bot(command_bot: "CommandBotBase") -> None:
     @command_bot.client.on(events.NewMessage(pattern="/(?i)"))
@@ -65,12 +67,13 @@ class CommandBotBase:
         return args_text
 
     def __init__(self, client: TelegramClient, bot_token: str, name: str = "CommandBot",
-        shortcuts: dict[str, str] = dict()):
+        shortcuts: dict[str, str] = dict(), keywords: dict[str, str] = dict()):
 
         self.client = client
         self.bot_token = bot_token
         self.name = name
         self.shortcuts = shortcuts
+        self.keywords = keywords
         self.request_location_futures = dict[int, asyncio.Future]()
 
         # Tracks mapping of process_alias to (process, output_bot_token, output_chat_id)
@@ -162,7 +165,13 @@ class CommandBotBase:
         
         await self.client.send_message(sender_id, message, parse_mode="HTML")
 
-    async def make_shortcut(self, event: events.NewMessage.Event, command: str) -> None:
+    async def set_keyword(self, event: events.NewMessage.Event, command: str) -> None:
+        keyword, value = command.split(' ', maxsplit=1)
+
+        self.keywords[keyword] = value
+        await self.echo(event, f"keyword [%{keyword}% -> {value}] set.")
+
+    async def set_shortcut(self, event: events.NewMessage.Event, command: str) -> None:
         shortcut, command = command.split(' ', maxsplit=1)
         shortcut = shortcut.strip()
         command = command.strip()
@@ -171,7 +180,7 @@ class CommandBotBase:
             command = '/' + command
         
         self.shortcuts[shortcut] = command
-        await self.echo(event, f"shortcut [/{shortcut} -> {command}] created.")
+        await self.echo(event, f"shortcut [/{shortcut} -> {command}] set.")
 
     async def rm_shortcut(self, event: events.NewMessage.Event, shortcut: str) -> None:
         if shortcut in self.shortcuts:
@@ -285,6 +294,7 @@ class CommandBotBase:
         await self.client.send_message(sender_id, "Location updated.", buttons=Button.clear())
 
     async def keyword_decay_handler(self, event: events.NewMessage.Event, args_text: str) -> str:
+        # Specialized keywords
         if r"%location%" in args_text:
             sender = await event.get_sender()
             sender_id = sender.id
@@ -308,6 +318,11 @@ class CommandBotBase:
                 f"-cloned_module_dpath {rpa_manager.cloned_module_dpath} " +
                 f"-cloned_source_dpath {rpa_manager.cloned_source_dpath} "
             )
+
+        # Custom keywords
+        for keyword in self.keywords:
+            if f"%{keyword}%" in args_text:
+                args_text = args_text.replace(f"%{keyword}%", self.keywords[keyword])
 
         return args_text
 
@@ -342,7 +357,7 @@ class CommandBotBase:
                         return await self.echo(event, f"<b>Error:</b> command [{command_name}]"
                                 + " not recognized.")
                 
-                if command_name != "make_shortcut":
+                if command_name != "set_shortcut":
                     args_text = await self.keyword_decay_handler(event, args_text)
 
                 if args_text:
