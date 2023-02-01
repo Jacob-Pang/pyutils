@@ -91,7 +91,7 @@ class CommandBotBase:
         process, output_bot_token, output_chat_id = self.processes[process_alias]
 
         for output in process.stdout:
-            try:    output = output.decode('utf-8')
+            try:    output = output.decode("utf-8", "ignore")
             except: output = f"(undecoded) {output}"
 
             output = output.replace('\r', '\n')
@@ -107,7 +107,7 @@ class CommandBotBase:
         process, output_bot_token, output_chat_id = self.processes[process_alias]
 
         for output in process.stderr:
-            try:    output = output.decode('utf-8')
+            try:    output = output.decode("utf-8", "ignore")
             except: output = f"(undecoded) {output}"
 
             output = output.replace('\r', '\n')
@@ -163,6 +163,28 @@ class CommandBotBase:
             sender = await event.get_sender()
             sender_id = sender.id
         
+        await self.client.send_message(sender_id, message, parse_mode="HTML")
+
+    async def view_keywords(self, event: events.NewMessage.Event) -> None:
+        sender = await event.get_sender()
+        sender_id = sender.id
+
+        message = "\n\n".join([
+            f"%{keyword}% : {value}"
+            for keyword, value in self.keywords.items()
+        ])
+
+        await self.client.send_message(sender_id, message, parse_mode="HTML")
+
+    async def view_shortcuts(self, event: events.NewMessage.Event) -> None:
+        sender = await event.get_sender()
+        sender_id = sender.id
+
+        message = "\n\n".join([
+            f"/{shortcut} : {command}"
+            for shortcut, command in self.shortcuts.items()
+        ])
+
         await self.client.send_message(sender_id, message, parse_mode="HTML")
 
     async def set_keyword(self, event: events.NewMessage.Event, command: str) -> None:
