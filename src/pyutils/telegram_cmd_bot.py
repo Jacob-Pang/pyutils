@@ -176,7 +176,7 @@ class CommandBotBase:
                 "bot_token": self.bot_token,
                 "shortcuts": self.shortcuts,
                 "keywords": self.keywords
-            })
+            }, config_file)
 
         self.echo(event, "Successfully saved config.")
 
