@@ -180,7 +180,7 @@ class RPAManager:
         locking_files_dpath: str = os.path.join(os.path.dirname(rpa.__file__), "rpa_manager_temp_files"),
         cloned_module_dpath: str = os.path.dirname(rpa.__file__), cloned_source_dpath: str = None) -> None:
 
-        self.rpa_instances = rpa_instance_map
+        self.rpa_instances: dict[int, ModuleType] = rpa_instance_map
         self.semaphore = Semaphore(1)
         
         self.locking_files_dpath = locking_files_dpath
@@ -233,31 +233,18 @@ class RPAManager:
             os.rmdir(self.locking_files_dpath)
     
     # Instance constructor methods
-    def remove_orphans(self) -> None:
-        # rpa_instances without corresponding lock_files are orphaned.
-        for rpa_instance_id in list[int](self.rpa_instances.keys()):
-            if not self.locking_file_exists(rpa_instance_id):
-                self.rpa_instances.pop(rpa_instance_id)
-
     def assign_rpa_instance_id(self) -> int:
         with self.semaphore:
-            self.remove_orphans()
             rpa_instance_id = 0
 
             while True:
                 lock_file_exists = self.locking_file_exists(rpa_instance_id)
 
-                if not (rpa_instance_id in self.rpa_instances or lock_file_exists):
+                if not lock_file_exists:
+                    self.make_locking_file(rpa_instance_id)
                     break
-
-                if lock_file_exists:
-                    # Instance assigned by another rpa_manager object *
-                    self.rpa_instances[rpa_instance_id] = None
                 
                 rpa_instance_id += 1
-            
-            self.rpa_instances[rpa_instance_id] = None
-            self.make_locking_file(rpa_instance_id)
 
             return rpa_instance_id
 
@@ -332,20 +319,26 @@ class RPAManager:
     
     def destroy_rpa_instance(self, rpa_instance_or_id: (ModuleType | int)) -> None:
         # Closes the rpa and recycles the use of the rpa_instance
-        rpa_instance, rpa_instance_id = (self.rpa_instances[rpa_instance_or_id], rpa_instance_or_id) \
-                if isinstance(rpa_instance_or_id, int) else \
-                (rpa_instance_or_id, rpa_instance_or_id.rpa_instance_id)
+        if isinstance(rpa_instance_or_id, int):
+            if rpa_instance_or_id not in self.rpa_instances:
+                return # No access to the rpa_instance using ID.
+            
+            rpa_instance, rpa_instance_id = self.rpa_instances[rpa_instance_or_id], \
+                    rpa_instance_or_id
+        else:
+            rpa_instance, rpa_instance_id = rpa_instance_or_id, rpa_instance_or_id.rpa_instance_id
 
-        if rpa_instance: # Purge zombie processes
-            rpa_instance.close()
-            kill_chrome_processes(rpa_instance)
+        rpa_instance.close()
+        kill_chrome_processes(rpa_instance) # Purge zombie processes
 
-            # Resets settings
-            self.set_delay_config(rpa_instance)
-            self.set_flags(rpa_instance)
+        # Resets settings
+        self.set_delay_config(rpa_instance)
+        self.set_flags(rpa_instance)
 
         with self.semaphore:
-            self.rpa_instances.pop(rpa_instance_id)
+            if rpa_instance_id in self.rpa_instances:
+                self.rpa_instances.pop(rpa_instance_id)
+
             self.destroy_lock_file(rpa_instance_id)
 
     # Destructors
