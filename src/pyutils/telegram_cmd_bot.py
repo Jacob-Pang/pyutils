@@ -178,29 +178,23 @@ class CommandBotBase:
                 "keywords": self.keywords
             }, config_file)
 
-        self.echo(event, "Successfully saved config.")
+        await self.echo(event, "Successfully saved config.")
 
     async def view_keywords(self, event: events.NewMessage.Event) -> None:
-        sender = await event.get_sender()
-        sender_id = sender.id
-
         message = "\n\n".join([
             f"%{keyword}% : {value}"
             for keyword, value in self.keywords.items()
         ])
 
-        await self.client.send_message(sender_id, message, parse_mode="HTML")
+        await self.echo(event, message)
 
     async def view_shortcuts(self, event: events.NewMessage.Event) -> None:
-        sender = await event.get_sender()
-        sender_id = sender.id
-
         message = "\n\n".join([
             f"/{shortcut} : {command}"
             for shortcut, command in self.shortcuts.items()
         ])
 
-        await self.client.send_message(sender_id, message, parse_mode="HTML")
+        await self.echo(event, message)
 
     async def set_keyword(self, event: events.NewMessage.Event, command: str) -> None:
         keyword, value = command.split(' ', maxsplit=1)
