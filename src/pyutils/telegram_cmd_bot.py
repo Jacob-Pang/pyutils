@@ -21,8 +21,8 @@ def send_telegram_message(bot_token: str, chat_id: str, message: str) -> None:
     requests.post(f"https://api.telegram.org/bot{bot_token}/sendMessage",
             json={"chat_id": chat_id, "text": message, "parse_mode": "html"})
 
-def make_bot_from_config(config_json: str) -> "CommandBotBase":
-    with open(config_json) as json_file:
+def make_bot_from_config(config_path: str) -> "CommandBotBase":
+    with open(config_path) as json_file:
         config: dict = json.load(json_file)
 
     name = config.get("name") if "name" in config else "CommandBot"
@@ -31,7 +31,7 @@ def make_bot_from_config(config_json: str) -> "CommandBotBase":
 
     client = TelegramClient(name, int(config.get("api_id")), config.get("api_hash"))
     return CommandBotBase(client, config.get("bot_token"), name=name, shortcuts=shortcuts,
-            keywords=keywords)
+            keywords=keywords, config_path=config_path)
 
 def run_command_bot(command_bot: "CommandBotBase") -> None:
     @command_bot.client.on(events.NewMessage(pattern="/(?i)"))
@@ -67,13 +67,16 @@ class CommandBotBase:
         return args_text
 
     def __init__(self, client: TelegramClient, bot_token: str, name: str = "CommandBot",
-        shortcuts: dict[str, str] = dict(), keywords: dict[str, str] = dict()):
+        shortcuts: dict[str, str] = dict(), keywords: dict[str, str] = dict(),
+        config_path: str = os.path.join(os.getcwd(), "telegram_cmd_bot_config.json")):
 
         self.client = client
         self.bot_token = bot_token
         self.name = name
         self.shortcuts = shortcuts
         self.keywords = keywords
+        self.config_path = config_path
+
         self.request_location_futures = dict[int, asyncio.Future]()
 
         # Tracks mapping of process_alias to (process, output_bot_token, output_chat_id)
@@ -164,6 +167,18 @@ class CommandBotBase:
             sender_id = sender.id
         
         await self.client.send_message(sender_id, message, parse_mode="HTML")
+
+    async def save_config(self, event: events.NewMessage.Event) -> None:
+        with open(self.config_path, "w") as config_file:
+            json.dump({
+                "api_id": self.client.api_id,
+                "api_hash": self.client.api_hash,
+                "bot_token": self.bot_token,
+                "shortcuts": self.shortcuts,
+                "keywords": self.keywords
+            })
+
+        self.echo(event, "Successfully saved config.")
 
     async def view_keywords(self, event: events.NewMessage.Event) -> None:
         sender = await event.get_sender()
